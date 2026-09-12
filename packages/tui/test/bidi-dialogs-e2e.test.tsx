@@ -124,6 +124,9 @@ async function bootApp(args: Record<string, unknown> = {}) {
 
   return {
     waitForFrame: pollFrame,
+    captureCharFrame: setup.captureCharFrame,
+    typeText: setup.mockInput.typeText,
+    pressEnter: () => setup.mockInput.pressEnter(),
     dispatch: (name: string) => api?.keymap.dispatchCommand(name),
     exit: async () => {
       try {
@@ -137,10 +140,14 @@ async function bootApp(args: Record<string, unknown> = {}) {
   }
 }
 
-test("e2e: /fonts command opens the terminal font dialog", async () => {
+test("e2e: typing /fonts in the prompt opens the terminal font dialog", async () => {
   const app = await bootApp({ sessionID: "ses_test" })
   try {
-    app.dispatch("font.pick")
+    // The exact user flow: type the slash command with real keypresses, then
+    // submit. No programmatic dispatch.
+    await app.typeText("/fonts")
+    await app.waitForFrame((f) => f.includes("/fonts"), "slash completion")
+    app.pressEnter()
     const frame = await app.waitForFrame((f) => f.includes("Terminal font for Arabic"), "fonts dialog")
     expect(frame.includes("Terminal font for Arabic")).toBe(true)
     expect(frame.includes("Recommended for Arabic")).toBe(true)
