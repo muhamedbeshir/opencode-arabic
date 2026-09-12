@@ -8,6 +8,25 @@
   </a>
 </p>
 <p align="center">The open source AI coding agent.</p>
+
+---
+
+> ### 🇸🇦 Arabic / RTL support build — نسخة دعم اللغة العربية
+>
+> This fork adds native **Arabic, Persian, Urdu and Hebrew** (Unicode BiDi /
+> UAX #9) rendering to the OpenCode TUI — in the **prompt input** and in
+> **assistant output** — with right alignment, correct wrapping, a visual
+> caret, and LTR isolation for code, paths and URLs.
+>
+> هذا المستودع يضيف دعمًا أصليًا للعربية والفارسية والأردية والعبرية (خوارزمية
+> يونيكود للاتجاهين UAX #9) في واجهة OpenCode — في **مربع الكتابة** وفي **ردود
+> المساعد** — مع محاذاة لليمين، والتفاف صحيح، ومؤشر واعٍ بالاتجاه، وعزل الكود
+> والمسارات والروابط لتبقى من اليسار لليمين.
+>
+> 📖 **[English guide](docs/rtl/README.md)** · **[الدليل العربي](docs/rtl/README.ar.md)** · **[Pull request](https://github.com/anomalyco/opencode/pull/48587)**
+
+---
+
 <p align="center">
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
   <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
