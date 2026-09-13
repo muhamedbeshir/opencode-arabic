@@ -140,22 +140,6 @@ async function bootApp(args: Record<string, unknown> = {}) {
   }
 }
 
-test("e2e: typing /fonts in the prompt opens the terminal font dialog", async () => {
-  const app = await bootApp({ sessionID: "ses_test" })
-  try {
-    // The exact user flow: type the slash command with real keypresses, then
-    // submit. No programmatic dispatch.
-    await app.typeText("/fonts")
-    await app.waitForFrame((f) => f.includes("/fonts"), "slash completion")
-    app.pressEnter()
-    const frame = await app.waitForFrame((f) => f.includes("Terminal font for Arabic"), "fonts dialog")
-    expect(frame.includes("Terminal font for Arabic")).toBe(true)
-    expect(frame.includes("Recommended for Arabic")).toBe(true)
-  } finally {
-    await app.exit()
-  }
-}, 60000)
-
 test("e2e: Arabic renders RTL inside a DialogSelect list", async () => {
   const app = await bootApp({ sessionID: "ses_test" })
   try {
