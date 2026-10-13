@@ -70,6 +70,7 @@ import { DialogPair } from "./component/dialog-pair"
 import { DialogHighlights } from "./component/dialog-highlights"
 import { claim } from "./util/highlights"
 import { DialogThemeList } from "./component/dialog-theme-list"
+import { DialogFonts } from "./component/dialog-fonts"
 import "./component/bidi-elements"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAgent } from "./component/dialog-agent"
@@ -1095,6 +1096,15 @@ function App() {
         slash: { name: "themes" },
         run: () => {
           dialog.replace(() => <DialogThemeList />)
+        },
+        category: "System",
+      },
+      {
+        name: "terminal.font",
+        title: "Terminal font for Arabic",
+        slash: { name: "fonts" },
+        run: () => {
+          dialog.replace(() => <DialogFonts />)
         },
         category: "System",
       },
