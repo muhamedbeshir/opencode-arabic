@@ -1,9 +1,12 @@
 import {
   CodeRenderable,
   TextBuffer,
+  TextTableRenderable,
   type ChunkRenderContext,
   type OnChunksCallback,
   type OptimizedBuffer,
+  type RGBA,
+  type TextBufferView,
   type TextChunk,
 } from "@opentui/core"
 import { hasRtl, layoutBidiText, paintBidiCell, widthOffsetToBoundary, wrappedLogicalText, type BidiLayout } from "../util/bidi"
@@ -234,4 +237,103 @@ function chunkAt(source: StyledSource, charIndex: number) {
   }
   const chunk = source.chunks[lo]
   return chunk && charIndex < source.offsets[lo] + chunk.text.length ? chunk : undefined
+}
+
+// Markdown tables are drawn by @opentui/core's TextTableRenderable, which paints
+// each cell with the native (BiDi-unaware) drawTextBuffer. It never goes through
+// CodeRenderable, so the prose painter above cannot reach it and cell content is
+// emitted in logical order (Arabic reads reversed). This installs a cell painter:
+// any cell whose logical text carries strong RTL is laid out with UAX #9 and
+// painted cell-by-cell, right-aligned per RTL line, so Arabic reads naturally
+// without disturbing the grid, borders or column widths. Reordered cells fall
+// back to the table defaults for styling because per-run styles live in the
+// native buffer and are not readable from JS.
+
+type TableCell = {
+  textBuffer: { getPlainText(): string }
+  textBufferView: TextBufferView
+}
+
+type TableInternals = {
+  _cells: Array<Array<TableCell | undefined>>
+  _columnCount: number
+  _cellPaddingX: number
+  _cellPaddingY: number
+  _defaultFg: RGBA
+  _defaultBg: RGBA
+  _defaultAttributes: number
+  _layout: { columnOffsets: number[]; rowOffsets: number[]; columnWidths: number[] }
+  getHorizontalCellPadding(): number
+}
+
+type TableCellLayout = {
+  text: string
+  width: number
+  lines: BidiLayout["lines"]
+}
+
+const tableCellLayouts = new WeakMap<TableCell, TableCellLayout>()
+
+function tableLines(cell: TableCell, text: string, width: number) {
+  const cached = tableCellLayouts.get(cell)
+  if (cached && cached.text === text && cached.width === width) return cached.lines
+  const lines = layoutBidiText(text, width).lines
+  tableCellLayouts.set(cell, { text, width, lines })
+  return lines
+}
+
+export function installBidiTablePaint() {
+  const proto = TextTableRenderable.prototype as unknown as {
+    drawCellRange(buffer: OptimizedBuffer, firstRow: number, lastRow: number): void
+    __bidiTable?: boolean
+  }
+  if (proto.__bidiTable) return
+  proto.__bidiTable = true
+  const stock = proto.drawCellRange
+  proto.drawCellRange = function (this: TextTableRenderable, buffer, firstRow, lastRow) {
+    const table = this as unknown as TableInternals
+    const hasRtlCell = table._cells.some((row) =>
+      row.some((cell) => !!cell && hasRtl(cell.textBuffer.getPlainText())),
+    )
+    if (!hasRtlCell) {
+      stock.call(this, buffer, firstRow, lastRow)
+      return
+    }
+    const colOffsets = table._layout.columnOffsets
+    const rowOffsets = table._layout.rowOffsets
+    const columnWidths = table._layout.columnWidths
+    const contentPadding = table.getHorizontalCellPadding()
+    const fg = table._defaultFg
+    const bg = table._defaultBg
+    const attributes = table._defaultAttributes
+    for (let rowIdx = firstRow; rowIdx <= lastRow; rowIdx++) {
+      const row = table._cells[rowIdx]
+      if (!row) continue
+      const cellY = (rowOffsets[rowIdx] ?? 0) + 1 + table._cellPaddingY
+      for (let colIdx = 0; colIdx < table._columnCount; colIdx++) {
+        const cell = row[colIdx]
+        if (!cell) continue
+        const x = (colOffsets[colIdx] ?? 0) + 1 + table._cellPaddingX
+        const text = cell.textBuffer.getPlainText()
+        if (!hasRtl(text)) {
+          buffer.drawTextBuffer(cell.textBufferView, x, cellY)
+          continue
+        }
+        const contentWidth = Math.max(1, (columnWidths[colIdx] ?? 1) - contentPadding)
+        const lines = tableLines(cell, text, contentWidth)
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const y = cellY + i
+          if (y < 0 || y >= buffer.height) continue
+          const x0 = x + (line.rtl ? Math.max(0, contentWidth - line.width) : 0)
+          for (const part of line.cells) {
+            if (part.col >= contentWidth) continue
+            const cellX = x0 + part.col
+            if (cellX < 0 || cellX >= buffer.width) continue
+            paintBidiCell(buffer, cellX, y, part.char, fg, bg, attributes)
+          }
+        }
+      }
+    }
+  }
 }
