@@ -21,6 +21,16 @@ export class BidiTextareaRenderable extends TextareaRenderable {
   private bidiState: { source: string; width: number; layout: BidiLayout; scroll: number } | undefined
   private bidiDesiredCol: number | undefined
 
+  constructor(...args: ConstructorParameters<typeof TextareaRenderable>) {
+    super(...args)
+    // The native scene syncs the terminal caret from the registered editor
+    // view every frame, which overwrites the bidi placement below. Deregister
+    // so this class owns the caret in both directions.
+    const scene = (this._ctx as unknown as { nativeScene?: { setEditorView?: (r: unknown, v: unknown) => void } })
+      .nativeScene
+    scene?.setEditorView?.(this, null)
+  }
+
   private bidiLayout() {
     const source = this.plainText
     if (!hasRtl(source)) {
@@ -58,6 +68,7 @@ export class BidiTextareaRenderable extends TextareaRenderable {
     const state = this.bidiLayout()
     if (!state) {
       super.renderSelf(buffer)
+      this.placeStockCursor()
       return
     }
     this.clampBidiScroll(state)
@@ -88,6 +99,18 @@ export class BidiTextareaRenderable extends TextareaRenderable {
       }
     }
     this.placeBidiCursor(state)
+  }
+
+  // With the editor view deregistered, nothing else positions the terminal
+  // caret, so mirror the native convention for plain LTR content.
+  private placeStockCursor() {
+    if (!this._showCursor || !this._focused) {
+      this._ctx.setCursorPosition(0, 0, false)
+      return
+    }
+    const cursor = this.editBuffer.getCursorPosition()
+    this._ctx.setCursorPosition(this._screenX + cursor.col + 1, this._screenY + cursor.row + 1, true)
+    this._ctx.setCursorStyle({ ...this._cursorStyle, color: this._cursorColor })
   }
 
   // 0.6.x paints the caret natively inside renderSelf, which the RTL path
