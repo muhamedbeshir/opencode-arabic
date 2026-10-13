@@ -87,15 +87,16 @@ export class BidiTextareaRenderable extends TextareaRenderable {
         )
       }
     }
+    this.placeBidiCursor(state)
   }
 
-  protected override renderCursor(buffer: OptimizedBuffer): void {
-    const state = this.bidiLayout()
-    if (!state) {
-      super.renderCursor(buffer)
+  // 0.6.x paints the caret natively inside renderSelf, which the RTL path
+  // bypasses, so place it here from the visual (bidi-ordered) position.
+  private placeBidiCursor(state: NonNullable<BidiTextareaRenderable["bidiState"]>) {
+    if (!this._showCursor || !this._focused) {
+      this._ctx.setCursorPosition(0, 0, false)
       return
     }
-    if (!this._showCursor || !this._focused) return
     const boundary = this.currentBoundary(state)
     const position = boundaryToVisual(state.layout, boundary)
     const height = this.bidiViewportHeight()
@@ -106,7 +107,6 @@ export class BidiTextareaRenderable extends TextareaRenderable {
     const x = (line.rtl ? this._screenX + state.width - line.width : this._screenX) + position.col
     this._ctx.setCursorPosition(x + 1, this._screenY + (position.line - state.scroll) + 1, true)
     this._ctx.setCursorStyle({ ...this._cursorStyle, color: this._cursorColor })
-    void buffer
   }
 
   override moveCursorLeft(options?: { select?: boolean }): boolean {

@@ -9,12 +9,12 @@
 $ErrorActionPreference = "Stop"
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$exe = Join-Path $repo "packages\opencode\dist\opencode-windows-x64\bin\opencode.exe"
+$exe = Join-Path $repo "packages\cli\dist\cli-windows-x64\bin\opencode.exe"
 
 Write-Host "Building single-platform native binary..."
 Push-Location $repo
 try {
-  bun run --cwd packages/opencode script/build.ts --single --skip-install --skip-embed-web-ui
+  bun run --cwd packages/cli script/build.ts --single --skip-install --skip-web-ui
 } finally {
   Pop-Location
 }
