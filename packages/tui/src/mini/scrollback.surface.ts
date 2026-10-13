@@ -21,6 +21,7 @@ import { turnSummaryCommit } from "./turn-summary"
 import { entryWriter, sameEntryGroup, separatorRows, spacerWriter, turnSummaryWriter } from "./scrollback.writer"
 import { type RunTheme } from "./theme"
 import type { RunEntryBody, StreamCommit } from "./types"
+import { BidiTextRenderable } from "../component/bidi-text"
 
 type ActiveBody = Exclude<RunEntryBody, { type: "none" | "structured" }>
 
@@ -184,7 +185,7 @@ export class RunScrollbackStream {
     const treeSitterClient = body.type === "text" ? undefined : (this.treeSitterClient ??= getTreeSitterClient())
     const renderable =
       body.type === "text"
-        ? new TextRenderable(surface.renderContext, {
+        ? new BidiTextRenderable(surface.renderContext, {
             content: "",
             width: "100%",
             wrapMode: "word",
@@ -399,7 +400,7 @@ export class RunScrollbackStream {
       const body = entryBody(commit, { mono: this.mono })
       if (body.type !== "text") return
       const style = entryLook(commit, this.theme.entry)
-      const caption = new TextRenderable(surface.renderContext, {
+      const caption = new BidiTextRenderable(surface.renderContext, {
         content: body.content + (image.image ? "" : "\nNo preview"),
         width: "100%",
         wrapMode: "word",
