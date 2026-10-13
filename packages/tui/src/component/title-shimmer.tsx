@@ -3,11 +3,11 @@ import {
   OptimizedBuffer,
   RGBA,
   TargetChannel,
-  TextRenderable,
   type RenderContext,
   type TextOptions,
 } from "@opentui/core"
 import { extend } from "@opentui/solid"
+import { BidiTextRenderable } from "./bidi-text"
 import { coast, intensityAt, smootherstep } from "./tab-pulse"
 
 type TitleShimmerOptions = TextOptions & {
@@ -24,7 +24,10 @@ const TRANSPARENT = RGBA.fromValues(0, 0, 0, 0)
 // Native text draws wide glyphs as a head followed by flagged continuation cells.
 const CONTINUATION = 0xc0000000 | 0
 
-export class TitleShimmerRenderable extends TextRenderable {
+// Extends the bidi text painter so session titles read right-to-left in the
+// steady state (tab bar, sidebar). Only the transient shimmer/wipe animation
+// windows still draw through the stock native path.
+export class TitleShimmerRenderable extends BidiTextRenderable {
   private _rename: TitleShimmerOptions["rename"]
   private _enabled: boolean
   private _backdrop: RGBA

@@ -1,5 +1,6 @@
 import {
   CodeRenderable,
+  MarkdownRenderable,
   TextBuffer,
   TextTableRenderable,
   type ChunkRenderContext,
@@ -83,14 +84,6 @@ function proseFiletype(renderable: CodeRenderable) {
   return (renderable as unknown as { filetype?: unknown }).filetype
 }
 
-function shouldBidiPaint(renderable: CodeRenderable) {
-  if (renderable.width <= 0) return false
-  const filetype = proseFiletype(renderable)
-  if (filetype !== undefined && filetype !== "markdown") return false
-  const content = renderable.content
-  return typeof content === "string" && hasRtl(content)
-}
-
 // Wraps onChunks once per instance so tree-sitter styled chunks are captured
 // for the paint below. Assigning marks highlights dirty, which restarts
 // highlighting through the wrapper; afterwards the installed wrapper is
@@ -118,21 +111,55 @@ function ensureChunksWrapped(renderable: CodeRenderable, state: BidiCodeState) {
   renderable.onChunks = wrapper
 }
 
+// 0.6.x paints text through the native scene, which captures each class's
+// prototype.renderSelf at definition time — replacing the prototype method is
+// therefore ignored (prose rendered in logical order). Markdown builds every
+// prose block through createMarkdownCodeRenderable, which the captured render
+// body dispatches through `this`, so wrapping it and attaching a per-instance
+// paint (own properties ARE honored by the scene) reaches paragraphs, headings,
+// list items, blockquotes and streaming updates alike.
 export function installBidiCodePaint() {
   if (prototypePatched) return
   prototypePatched = true
-  const proto = CodeRenderable.prototype as unknown as {
-    renderSelf(buffer: OptimizedBuffer): void
+  const proto = MarkdownRenderable.prototype as unknown as {
+    createMarkdownCodeRenderable: (...args: unknown[]) => CodeRenderable
   }
-  const stockRenderSelf = proto.renderSelf
-  proto.renderSelf = function (this: CodeRenderable, buffer: OptimizedBuffer) {
-    if (!shouldBidiPaint(this)) {
-      stockRenderSelf.call(this, buffer)
-      return
-    }
-    const state = blockState(this)
-    ensureChunksWrapped(this, state)
-    paintBidiBlock(this, state, buffer, () => stockRenderSelf.call(this, buffer))
+  const stock = proto.createMarkdownCodeRenderable
+  proto.createMarkdownCodeRenderable = function (...args: unknown[]) {
+    const renderable = stock.apply(this, args)
+    attachBidiCodePaint(renderable)
+    return renderable
+  }
+}
+
+type CodePaintable = CodeRenderable & { renderSelf: (buffer: OptimizedBuffer) => void }
+
+// The captured native paint body: on 0.6.2 the scene registered this exact
+// function at class-definition time, so calling it directly reproduces the
+// stock render for non-RTL blocks.
+const stockCodeRenderSelf = (CodeRenderable.prototype as unknown as {
+  renderSelf: (this: CodeRenderable, buffer: OptimizedBuffer) => void
+}).renderSelf
+
+// Attaches the bidi paint to one code renderable. Real-code blocks (any real
+// filetype) keep the stock painter bit-for-bit; markdown prose without RTL
+// defers at paint time inside paintBidiBlock.
+export function attachBidiCodePaint(renderable: CodeRenderable) {
+  const filetype = proseFiletype(renderable)
+  if (filetype !== undefined && filetype !== "markdown") return
+  ;(renderable as CodePaintable).renderSelf = (buffer: OptimizedBuffer) => {
+    const state = blockState(renderable)
+    ensureChunksWrapped(renderable, state)
+    paintBidiBlock(renderable, state, buffer, () => stockCodeRenderSelf.call(renderable, buffer))
+  }
+}
+
+// Catalogue override so JSX <code> surfaces (inline markdown snippets rendered
+// outside MarkdownRenderable) get the same treatment.
+export class BidiCodeRenderable extends CodeRenderable {
+  constructor(...args: ConstructorParameters<typeof CodeRenderable>) {
+    super(...args)
+    attachBidiCodePaint(this)
   }
 }
 

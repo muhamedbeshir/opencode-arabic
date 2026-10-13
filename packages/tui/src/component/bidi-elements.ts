@@ -2,7 +2,7 @@ import { extend } from "@opentui/solid"
 import { BidiTextRenderable } from "./bidi-text"
 import { BidiTextareaRenderable } from "./bidi-textarea"
 import { BidiInputRenderable } from "./bidi-input"
-import { installBidiCodePaint, installBidiTablePaint } from "./bidi-markdown"
+import { BidiCodeRenderable, installBidiCodePaint, installBidiTablePaint } from "./bidi-markdown"
 
 // Registers the bidi-aware elements with the OpenTUI solid catalogue so they
 // can be used as <bidi_text> and <bidi_textarea> in JSX. Import this module
@@ -25,9 +25,11 @@ extend({
   text: BidiTextRenderable,
   textarea: BidiTextareaRenderable,
   input: BidiInputRenderable,
+  code: BidiCodeRenderable,
   bidi_text: BidiTextRenderable,
   bidi_textarea: BidiTextareaRenderable,
   bidi_input: BidiInputRenderable,
+  bidi_code: BidiCodeRenderable,
 })
 installBidiCodePaint()
 installBidiTablePaint()
