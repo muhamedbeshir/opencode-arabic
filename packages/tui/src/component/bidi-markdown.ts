@@ -1,7 +1,6 @@
 import {
   CodeRenderable,
   MarkdownRenderable,
-  TextBuffer,
   TextTableRenderable,
   type ChunkRenderContext,
   type OnChunksCallback,
@@ -10,7 +9,7 @@ import {
   type TextBufferView,
   type TextChunk,
 } from "@opentui/core"
-import { hasRtl, layoutBidiText, paintBidiCell, widthOffsetToBoundary, wrappedLogicalText, type BidiLayout } from "../util/bidi"
+import { hasRtl, layoutBidiText, paintBidiCell, widthOffsetToBoundary, type BidiLayout } from "../util/bidi"
 
 // Markdown bidi painting, installed once on CodeRenderable itself so every
 // markdown-prose block inherits it: top-level paragraphs and headings, list
@@ -35,9 +34,8 @@ type StyledSource = {
 type BidiCodeState = {
   styled: StyledSource | undefined
   layout: BidiLayout | undefined
-  // Logical source text of the current layout (pre-wrap).
+  // Logical source text of the current layout.
   source: string
-  wrapped: string | undefined
   width: number
   // Bumped on every captured chunk update so style-only changes (same text,
   // new styles) still rebuild the layout instead of painting a stale one.
@@ -49,19 +47,6 @@ type BidiCodeState = {
 const blockStates = new WeakMap<CodeRenderable, BidiCodeState>()
 let prototypePatched = false
 
-// Protected members of TextBufferRenderable needed for buffer sync, plus
-// the highlight machinery. startHighlight/_highlightsDirty are private in
-// the .d.ts but public at runtime; these shapes only widen the TypeScript
-// view. Coupled to @opentui/core 0.4.5 (see script/upgrade-opentui.ts when
-// bumping).
-type CodeInternals = {
-  textBuffer: TextBuffer
-  plainText: string
-  updateTextInfo(): void
-  startHighlight(): void
-  _highlightsDirty?: boolean
-}
-
 function blockState(renderable: CodeRenderable) {
   let state = blockStates.get(renderable)
   if (!state) {
@@ -69,7 +54,6 @@ function blockState(renderable: CodeRenderable) {
       styled: undefined,
       layout: undefined,
       source: "",
-      wrapped: undefined,
       width: 0,
       styledVersion: 0,
       paintedVersion: -1,
@@ -85,9 +69,7 @@ function proseFiletype(renderable: CodeRenderable) {
 }
 
 // Wraps onChunks once per instance so tree-sitter styled chunks are captured
-// for the paint below. Assigning marks highlights dirty, which restarts
-// highlighting through the wrapper; afterwards the installed wrapper is
-// detected and left alone, so this converges instead of looping.
+// for the paint below.
 function ensureChunksWrapped(renderable: CodeRenderable, state: BidiCodeState) {
   const current = renderable.onChunks
   if (current === state.chunksWrapper) return
@@ -104,7 +86,6 @@ function ensureChunksWrapped(renderable: CodeRenderable, state: BidiCodeState) {
     state.styled = { text, chunks: captured, offsets }
     state.styledVersion++
     state.layout = undefined
-    state.wrapped = undefined
     return result
   }
   state.chunksWrapper = wrapper
@@ -147,9 +128,9 @@ const stockCodeRenderSelf = (CodeRenderable.prototype as unknown as {
 export function attachBidiCodePaint(renderable: CodeRenderable) {
   const filetype = proseFiletype(renderable)
   if (filetype !== undefined && filetype !== "markdown") return
+  const state = blockState(renderable)
+  ensureChunksWrapped(renderable, state)
   ;(renderable as CodePaintable).renderSelf = (buffer: OptimizedBuffer) => {
-    const state = blockState(renderable)
-    ensureChunksWrapped(renderable, state)
     paintBidiBlock(renderable, state, buffer, () => stockCodeRenderSelf.call(renderable, buffer))
   }
 }
@@ -169,51 +150,26 @@ function paintBidiBlock(
   buffer: OptimizedBuffer,
   paintStock: () => void,
 ) {
-  const internals = renderable as unknown as CodeInternals
   const content = renderable.content
-  const plain = internals.plainText
-  // The buffer may hold our pre-wrapped text; recover the logical source.
-  const current = state.wrapped !== undefined && plain === state.wrapped ? state.source : plain
   if (!hasRtl(content) || renderable.width <= 0) {
-    if (state.wrapped !== undefined) {
-      if (plain !== content) {
-        internals.textBuffer.setText(content)
-        internals.updateTextInfo()
-      }
-      state.wrapped = undefined
-      state.layout = undefined
-    }
+    state.layout = undefined
     paintStock()
     return
   }
 
-    if (
-      state.source !== current ||
-      state.width !== renderable.width ||
-      state.paintedVersion !== state.styledVersion
-    ) {
-      state.source = current
-      state.width = renderable.width
-      state.paintedVersion = state.styledVersion
-      state.layout = layoutBidiText(current, renderable.width)
-      state.wrapped = wrappedLogicalText(state.layout)
-    }
-
-    // The patched paint replaces Code's renderSelf, which normally starts
-    // tree-sitter highlighting when dirty. Mirror that kickoff exactly
-    // (clear the flag synchronously, then start) so syntax colors keep
-    // flowing for RTL blocks on content, theme, and conceal changes.
-    if (internals._highlightsDirty) {
-      internals._highlightsDirty = false
-      internals.startHighlight()
-    }
-
-    if (plain !== state.wrapped) {
-      internals.textBuffer.setText(state.wrapped ?? current)
-      internals.updateTextInfo()
-    }
-    paintStyledLines(buffer, state, renderable)
+  if (
+    state.source !== content ||
+    state.width !== renderable.width ||
+    state.paintedVersion !== state.styledVersion
+  ) {
+    state.source = content
+    state.width = renderable.width
+    state.paintedVersion = state.styledVersion
+    state.layout = layoutBidiText(content, renderable.width)
   }
+
+  paintStyledLines(buffer, state, renderable)
+}
 
 function paintStyledLines(buffer: OptimizedBuffer, state: BidiCodeState, renderable: CodeRenderable) {
   const layout = state.layout
