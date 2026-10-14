@@ -65,6 +65,7 @@ import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogDoctor } from "./component/dialog-doctor"
+import { DialogBeshir } from "./component/dialog-beshir"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
 import { DialogPair } from "./component/dialog-pair"
@@ -1031,6 +1032,15 @@ function App() {
         slash: { name: "doctor" },
         run: () => {
           dialog.replace(() => <DialogDoctor />)
+        },
+        category: "System",
+      },
+      {
+        name: "opencode.beshir",
+        title: "Beshir settings",
+        slash: { name: "beshir" },
+        run: () => {
+          dialog.replace(() => <DialogBeshir />)
         },
         category: "System",
       },

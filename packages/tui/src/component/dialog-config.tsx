@@ -2,7 +2,9 @@ import { createMemo, createSignal } from "solid-js"
 import { useConfig } from "../config"
 import { useThemes } from "../context/theme"
 import { DialogSelect } from "../ui/dialog-select"
+import { useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
+import { DialogBeshir } from "./dialog-beshir"
 
 type Setting = {
   title: string
@@ -334,6 +336,7 @@ export function DialogConfig(props: { current?: string }) {
   const config = useConfig()
   const toast = useToast()
   const themes = useThemes()
+  const dialog = useDialog()
   const current = Math.max(
     0,
     settings.findIndex((setting) => settingID(setting) === props.current),
@@ -359,19 +362,27 @@ export function DialogConfig(props: { current?: string }) {
     const index = setting.values?.indexOf(current)
     return index === undefined || index < 0 ? String(current) : (setting.labels?.[index] ?? String(current))
   }
-  const options = createMemo(() =>
-    settings.map((setting, index) => ({
+  const options = createMemo(() => [
+    ...settings.map((setting, index) => ({
       title: setting.title,
       category: setting.category,
       searchText: setting.keywords?.join(" "),
       footer: display(setting),
       value: index,
     })),
-  )
+    {
+      title: "Beshir settings",
+      category: "Beshir",
+      searchText: "beshir skills enable disable toggle",
+      footer: "open ›",
+      value: -1,
+    },
+  ])
 
   async function change(direction: number, index = selected()) {
     if (saving()) return
     const setting = settings[index]
+    if (!setting) return
     const current = value(setting)
     const choices = values(setting)
     const next = choices
@@ -398,7 +409,13 @@ export function DialogConfig(props: { current?: string }) {
       current={current}
       filterThreshold={0.7}
       onMove={(option) => setSelected(option.value)}
-      onSelect={(option) => void change(1, option.value)}
+      onSelect={(option) => {
+        if (option.value === -1) {
+          dialog.replace(() => <DialogBeshir />)
+          return
+        }
+        void change(1, option.value)
+      }}
       footerHints={[{ title: "←/→", label: "change" }]}
       bindings={[
         {
