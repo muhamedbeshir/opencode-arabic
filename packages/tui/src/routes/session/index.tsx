@@ -917,6 +917,26 @@ export function Session(props: {
     },
   ]
 
+  // Rewind the session to an earlier user message: stage the revert and restore
+  // that message's text into the composer so it can be edited and resent.
+  const rewindTo = (messageID: string) => {
+    const sessionID = route.sessionID
+    const message = messagesBeforeRevert().find(
+      (candidate): candidate is SessionMessageUser => candidate.id === messageID && candidate.type === "user",
+    )
+    const target = prompt()
+    void (async () => {
+      if (pendingDeliveries().has(messageID)) {
+        if (!(await mutatePending("cancel", messageID))) return
+      } else {
+        await client.api.session.interrupt({ sessionID })
+        await client.api.session.wait({ sessionID })
+        await client.api.session.revert.stage({ sessionID, messageID })
+      }
+      if (message) target?.set({ ...projectedPromptInput(message), pasted: [] })
+    })().catch((error) => toast.show({ message: errorMessage(error), variant: "error", duration: 5000 }))
+  }
+
   const baseCommands = createMemo(() => [
     {
       title: "Share session",
@@ -1011,22 +1031,42 @@ export function Session(props: {
           dialog.clear()
           return
         }
-        const sessionID = route.sessionID
-        const target = prompt()
-        void (async () => {
-          if (pendingDeliveries().has(message.id)) {
-            if (!(await mutatePending("cancel", message.id))) return
-          } else {
-            await client.api.session.interrupt({ sessionID })
-            await client.api.session.wait({ sessionID })
-            await client.api.session.revert.stage({ sessionID, messageID: message.id })
-          }
-          target?.set({
-            ...projectedPromptInput(message),
-            pasted: [],
-          })
-        })().catch((error) => toast.show({ message: errorMessage(error), variant: "error", duration: 5000 }))
+        rewindTo(message.id)
         dialog.clear()
+      },
+    },
+    {
+      title: "Rewind to a previous message",
+      id: "session.rewind",
+      group: "Session",
+      slash: { name: "rewind" },
+      run: () => {
+        // Most recent first: rewinding usually targets something just said.
+        const targets = messagesBeforeRevert()
+          .filter((message): message is SessionMessageUser => message.type === "user" && !!message.text.trim())
+          .reverse()
+        if (targets.length === 0) {
+          toast.show({ message: "Nothing to rewind", variant: "error", duration: 3000 })
+          dialog.clear()
+          return
+        }
+        dialog.replace(() => (
+          <DialogSelect
+            title="Rewind"
+            options={targets.map((message, index) => {
+              const firstLine = message.text.trim().split("\n")[0] ?? ""
+              return {
+                title: firstLine.slice(0, 80) || "(empty message)",
+                value: message.id,
+                footer: `${index + 1} of ${targets.length}`,
+              }
+            })}
+            onSelect={(option) => {
+              rewindTo(option.value)
+              dialog.clear()
+            }}
+          />
+        ))
       },
     },
     {

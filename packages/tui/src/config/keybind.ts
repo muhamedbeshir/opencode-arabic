@@ -134,6 +134,7 @@ export const Definitions = {
   "session.toggle.exploration_grouping": keybind("none", "Toggle related tool call grouping"),
   "session.verbosity.cycle": keybind("none", "Cycle transcript verbosity"),
   "session.permission.cycle": keybind("shift+tab", "Cycle permission mode"),
+  "session.rewind": keybind("none", "Rewind to a previous message"),
   "session.child.first": keybind("down", "Toggle subagent picker"),
   "session.child.next": keybind("right", "Go to next child session"),
   "session.child.previous": keybind("left", "Go to previous child session"),
