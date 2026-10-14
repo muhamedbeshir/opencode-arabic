@@ -11,6 +11,7 @@ import {
 } from "@opentui/core"
 import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, Switch, Match, For } from "solid-js"
 import path from "path"
+import { appendFile } from "node:fs/promises"
 import { useLocal } from "../../context/local"
 import { useTheme, useThemes } from "../../context/theme"
 import { tint } from "../../theme/color"
@@ -180,6 +181,15 @@ function argumentSlash(input: string, commands: readonly KeymapCommand[]) {
   )
   if (!command) return
   return { command, input: head.arguments }
+}
+
+// A prompt beginning with "#" is a memory note the user wants remembered across
+// sessions; the leading hashes are stripped and the rest is appended to the
+// project's AGENTS.md instead of being sent to the model.
+function memoryNote(text: string) {
+  if (!text.startsWith("#")) return undefined
+  const line = text.replace(/^#+\s*/, "").trim()
+  return line.length > 0 ? line : undefined
 }
 
 export function Prompt(props: PromptProps) {
@@ -1146,6 +1156,22 @@ export function Prompt(props: PromptProps) {
     if (slash) {
       clearPrompt()
       await slash.command.run(slash.input)
+      return true
+    }
+    // A prompt that starts with "#" is a memory note: it is appended to the
+    // project's AGENTS.md instead of being sent to the model.
+    const memory = store.mode === "shell" ? undefined : memoryNote(trimmed)
+    if (memory !== undefined) {
+      const directory = currentLocation.current?.directory ?? currentLocation.ref?.directory
+      if (!directory) {
+        toast.show({ message: "Cannot save to memory: unknown project location", variant: "warning" })
+        return false
+      }
+      clearPrompt()
+      await appendFile(path.join(directory, "AGENTS.md"), `\n- ${memory}\n`).then(
+        () => toast.show({ message: "Saved to AGENTS.md", variant: "info" }),
+        (error) => toast.show({ title: "Failed to update AGENTS.md", message: errorMessage(error), variant: "error" }),
+      )
       return true
     }
     const slashHead = parseSlashHead(inputText, /\s/)

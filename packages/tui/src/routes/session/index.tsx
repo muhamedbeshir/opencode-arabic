@@ -187,6 +187,8 @@ export function Session(props: {
   }
   const currentLocation = useLocation()
   const location = createMemo(() => session()?.location ?? currentLocation.ref)
+  // Remember the agent to restore when leaving Plan mode through the permission cycle.
+  const [agentBeforePlan, setAgentBeforePlan] = createSignal<string | undefined>()
 
   createEffect(() => currentLocation.set(location()))
 
@@ -206,6 +208,10 @@ export function Session(props: {
     )
   })
   const promptedPermissions = createMemo(() => (local.permission.mode === "autoaccept" ? [] : permissions()))
+  const permissionLabel = createMemo(() => {
+    if (local.agent.current()?.id === "plan") return "Plan"
+    return local.permission.mode === "autoaccept" ? "Auto-accept" : "Ask"
+  })
   const forms = createMemo(() => {
     const global = data.session.form.list("global", location()) ?? []
     if (session()?.parentID) return global
@@ -1098,6 +1104,28 @@ export function Session(props: {
             draft.session = { ...draft.session, verbosity: next }
           })
           .catch(toast.error)
+        dialog.clear()
+      },
+    },
+    {
+      title: `Permissions: ${permissionLabel()}`,
+      id: "session.permission.cycle",
+      group: "Session",
+      run: () => {
+        // Ask -> Auto-accept -> Plan -> Ask, mirroring the common agent cycle.
+        if (local.agent.current()?.id === "plan") {
+          const fallback = local.agent.list().find((candidate) => candidate.id !== "plan")?.id
+          local.permission.set("prompt")
+          const restore = agentBeforePlan() ?? fallback
+          if (restore) local.agent.set(restore)
+          setAgentBeforePlan(undefined)
+        } else if (local.permission.mode === "autoaccept") {
+          setAgentBeforePlan(local.agent.current()?.id)
+          local.permission.set("prompt")
+          local.agent.set("plan")
+        } else {
+          local.permission.set("autoaccept")
+        }
         dialog.clear()
       },
     },

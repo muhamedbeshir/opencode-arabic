@@ -64,6 +64,7 @@ import { DialogModel } from "./component/dialog-model"
 import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
+import { DialogDoctor } from "./component/dialog-doctor"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
 import { DialogPair } from "./component/dialog-pair"
@@ -1021,6 +1022,15 @@ function App() {
         slash: { name: "status" },
         run: () => {
           dialog.replace(() => <DialogStatus />)
+        },
+        category: "System",
+      },
+      {
+        name: "opencode.doctor",
+        title: "Run diagnostics",
+        slash: { name: "doctor" },
+        run: () => {
+          dialog.replace(() => <DialogDoctor />)
         },
         category: "System",
       },
