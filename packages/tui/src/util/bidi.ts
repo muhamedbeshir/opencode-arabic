@@ -1,5 +1,5 @@
 import bidiFactory from "bidi-js"
-import type { OptimizedBuffer, RGBA } from "@opentui/core"
+import { RGBA, type OptimizedBuffer } from "@opentui/core"
 
 // Unicode Bidirectional Algorithm (UAX #9) engine. bidi-js is a pure-JS
 // implementation verified against the Unicode bidi conformance suite. All
@@ -115,6 +115,24 @@ export function paintBidiCell(
 ) {
   if (char.length > 1) buffer.drawText(char, x, y, fg, bg, attributes)
   else buffer.setCell(x, y, char, fg, bg, attributes)
+}
+
+// Selection fallback when a renderable has no explicit selection colors. Stock
+// OpenTUI inverts the run instead: the selection background becomes the run
+// foreground, and the selection foreground becomes the run background, or black
+// when that background is transparent (see TextBufferRenderable /
+// EditBufferRenderable and OptimizedBuffer.drawText). The bidi painters bypass
+// the native selection path, so they reproduce the same inversion here.
+const SELECTION_ON_TRANSPARENT_FG = RGBA.fromValues(0, 0, 0, 1)
+
+export function bidiSelectionColors(
+  fg: RGBA,
+  bg: RGBA,
+  selectionBg: RGBA | undefined,
+  selectionFg: RGBA | undefined,
+) {
+  if (selectionBg) return { fg: selectionFg ?? fg, bg: selectionBg }
+  return { fg: bg.a > 0 ? bg : SELECTION_ON_TRANSPARENT_FG, bg: fg }
 }
 
 const WHITESPACE = /\s/

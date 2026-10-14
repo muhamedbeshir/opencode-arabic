@@ -9,7 +9,7 @@ import {
   type TextBufferView,
   type TextChunk,
 } from "@opentui/core"
-import { hasRtl, layoutBidiText, paintBidiCell, widthOffsetToBoundary, type BidiLayout } from "../util/bidi"
+import { hasRtl, layoutBidiText, paintBidiCell, bidiSelectionColors, widthOffsetToBoundary, type BidiLayout } from "../util/bidi"
 
 // Markdown bidi painting, installed once on CodeRenderable itself so every
 // markdown-prose block inherits it: top-level paragraphs and headings, list
@@ -182,8 +182,8 @@ function paintStyledLines(buffer: OptimizedBuffer, state: BidiCodeState, rendera
   const defaultBg = renderable.bg
   const defaultAttributes = renderable.attributes
   const selection = renderable.getSelection()
-  const selectionFg = renderable.selectionFg ?? defaultFg
-  const selectionBg = renderable.selectionBg ?? defaultBg
+  const selectionBg = renderable.selectionBg
+  const selectionFg = renderable.selectionFg
   const selStart = selection ? widthOffsetToBoundary(layout, selection.start) : -1
   const selEnd = selection ? widthOffsetToBoundary(layout, selection.end) : -1
   const width = renderable.width
@@ -196,14 +196,17 @@ function paintStyledLines(buffer: OptimizedBuffer, state: BidiCodeState, rendera
       const x = x0 + cell.col
       if (x < 0 || x >= buffer.width) continue
       const chunk = styled ? chunkAt(styled, layout.glyphs[cell.glyph].charIndex) : undefined
+      const cellFg = chunk?.fg ?? defaultFg
+      const cellBg = chunk?.bg ?? defaultBg
       const selected = selStart >= 0 && cell.glyph >= selStart && cell.glyph < selEnd
+      const colors = selected ? bidiSelectionColors(cellFg, cellBg, selectionBg, selectionFg) : undefined
       paintBidiCell(
         buffer,
         x,
         y,
         cell.char,
-        selected ? selectionFg : (chunk?.fg ?? defaultFg),
-        selected ? selectionBg : (chunk?.bg ?? defaultBg),
+        colors?.fg ?? cellFg,
+        colors?.bg ?? cellBg,
         chunk?.attributes ?? defaultAttributes,
       )
     }

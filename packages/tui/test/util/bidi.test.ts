@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
+import { RGBA } from "@opentui/core"
 import {
+  bidiSelectionColors,
   boundaryToLogicalCursor,
   boundaryToVisual,
   hasRtl,
@@ -204,5 +206,33 @@ describe("bidi cursor mapping", () => {
     const boundary = visualToBoundary(layout, 0, 5)
     const back = boundaryToVisual(layout, boundary)
     expect(Math.abs(back.col - 5)).toBeLessThanOrEqual(1)
+  })
+})
+
+describe("bidi selection colors", () => {
+  const fg = RGBA.fromInts(200, 200, 200)
+  const opaqueBg = RGBA.fromInts(20, 20, 20)
+  const transparentBg = RGBA.fromInts(0, 0, 0, 0)
+
+  test("inverts the run when no selection colors are configured", () => {
+    const colors = bidiSelectionColors(fg, opaqueBg, undefined, undefined)
+    expect(colors.bg).toBe(fg)
+    expect(colors.fg).toBe(opaqueBg)
+  })
+
+  test("falls back to black text on a transparent background", () => {
+    const colors = bidiSelectionColors(fg, transparentBg, undefined, undefined)
+    expect(colors.bg).toBe(fg)
+    expect(colors.fg.a).toBe(1)
+    expect(colors.fg.r).toBe(0)
+    expect(colors.fg.g).toBe(0)
+    expect(colors.fg.b).toBe(0)
+  })
+
+  test("explicit selection colors win over the inversion", () => {
+    const selectionBg = RGBA.fromInts(40, 90, 200)
+    const colors = bidiSelectionColors(fg, opaqueBg, selectionBg, undefined)
+    expect(colors.bg).toBe(selectionBg)
+    expect(colors.fg).toBe(fg)
   })
 })

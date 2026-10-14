@@ -2,6 +2,7 @@ import { InputRenderable, type OptimizedBuffer } from "@opentui/core"
 import {
   boundaryToLogicalCursor,
   boundaryToVisual,
+  bidiSelectionColors,
   hasRtl,
   layoutBidiText,
   logicalCursorToBoundary,
@@ -75,8 +76,9 @@ export class BidiInputRenderable extends InputRenderable {
     const selection = this.getSelection()
     const selStart = selection ? widthOffsetToBoundary(state.layout, selection.start) : -1
     const selEnd = selection ? widthOffsetToBoundary(state.layout, selection.end) : -1
-    const selectionFg = this._selectionFg ?? this._textColor
-    const selectionBg = this._selectionBg ?? this._backgroundColor
+    const selectionColors = selection
+      ? bidiSelectionColors(this._textColor, this._backgroundColor, this._selectionBg, this._selectionFg)
+      : undefined
     const height = this.bidiViewportHeight()
     for (let i = state.scroll; i < state.layout.lines.length && i < state.scroll + height; i++) {
       const line = state.layout.lines[i]
@@ -87,13 +89,14 @@ export class BidiInputRenderable extends InputRenderable {
         const x = x0 + cell.col
         if (x < 0 || x >= buffer.width) continue
         const selected = selStart >= 0 && cell.glyph >= selStart && cell.glyph < selEnd
+        const colors = selected ? selectionColors : undefined
         paintBidiCell(
           buffer,
           x,
           y,
           cell.char,
-          selected ? selectionFg : this._textColor,
-          selected ? selectionBg : this._backgroundColor,
+          colors?.fg ?? this._textColor,
+          colors?.bg ?? this._backgroundColor,
           this._defaultAttributes,
         )
       }

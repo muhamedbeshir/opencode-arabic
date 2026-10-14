@@ -2486,6 +2486,9 @@ function ToolPart(props: { part: SessionMessageAssistantTool; images?: boolean }
       <Match when={display() === "skill"}>
         <Skill {...toolprops} />
       </Match>
+      <Match when={display() === "todowrite"}>
+        <Todos {...toolprops} />
+      </Match>
       <Match when={true}>
         <GenericTool {...toolprops} />
       </Match>
@@ -3518,6 +3521,72 @@ function Skill(props: ToolProps) {
     <InlineTool icon="→" pending="Loading skill…" complete={name()} part={props.part}>
       Skill "{name()}"
     </InlineTool>
+  )
+}
+
+type TodoEntry = { content: string; status: "pending" | "in_progress" | "completed" }
+
+function todoEntries(value: unknown): TodoEntry[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item): TodoEntry[] => {
+    if (!isRecord(item)) return []
+    const content = stringValue(item.content)
+    if (content === undefined) return []
+    if (item.status === "completed") return [{ content, status: "completed" }]
+    if (item.status === "in_progress") return [{ content, status: "in_progress" }]
+    return [{ content, status: "pending" }]
+  })
+}
+
+function Todos(props: ToolProps) {
+  const theme = useTheme()
+  const running = createMemo(() => props.part.state.status === "streaming" || props.part.state.status === "running")
+  const entries = createMemo(() => {
+    const fromInput = todoEntries(props.input.todos)
+    return fromInput.length > 0 ? fromInput : todoEntries(props.metadata.todos)
+  })
+  const completed = createMemo(() => entries().filter((entry) => entry.status === "completed").length)
+  const marker = (status: TodoEntry["status"]) =>
+    status === "completed" ? "✔" : status === "in_progress" ? "◐" : "☐"
+  const markerColor = (status: TodoEntry["status"]) =>
+    status === "completed"
+      ? theme.text.feedback.success.base
+      : status === "in_progress"
+        ? theme.text.feedback.info.base
+        : theme.text.muted
+  return (
+    <>
+      <InlineTool
+        icon="☰"
+        pending="Updating todos…"
+        complete={props.part.state.status === "completed"}
+        spinner={running()}
+        part={props.part}
+      >
+        Todos <Show when={entries().length}>({completed()}/{entries().length})</Show>
+      </InlineTool>
+      <Show when={entries().length}>
+        <box paddingLeft={3 + INLINE_TOOL_ICON_WIDTH} flexDirection="column">
+          <For each={entries()}>
+            {(entry) => (
+              <box flexDirection="row">
+                <text flexShrink={0} fg={markerColor(entry.status)}>
+                  {marker(entry.status)}{" "}
+                </text>
+                <text
+                  flexGrow={1}
+                  wrapMode="word"
+                  fg={entry.status === "pending" ? theme.text.muted : theme.text.base}
+                  attributes={entry.status === "completed" ? TextAttributes.STRIKETHROUGH : undefined}
+                >
+                  {entry.content}
+                </text>
+              </box>
+            )}
+          </For>
+        </box>
+      </Show>
+    </>
   )
 }
 

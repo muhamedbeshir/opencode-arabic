@@ -1,5 +1,5 @@
 import { TextRenderable, type OptimizedBuffer } from "@opentui/core"
-import { hasRtl, layoutBidiText, paintBidiCell, type BidiLayout } from "../util/bidi"
+import { bidiSelectionColors, hasRtl, layoutBidiText, paintBidiCell, widthOffsetToBoundary, type BidiLayout } from "../util/bidi"
 
 // RTL-aware text element for user-authored content (chat input echoes, status lines, etc.).
 // English-only content renders through the stock OpenTUI path untouched; the
@@ -30,6 +30,10 @@ export class BidiTextRenderable extends TextRenderable {
     const fg = this.fg
     const bg = this.bg
     const attributes = this.attributes
+    const selection = this.getSelection()
+    const selStart = selection ? widthOffsetToBoundary(layout, selection.start) : -1
+    const selEnd = selection ? widthOffsetToBoundary(layout, selection.end) : -1
+    const selectionColors = selection ? bidiSelectionColors(fg, bg, this.selectionBg, this.selectionFg) : undefined
     for (let i = 0; i < layout.lines.length; i++) {
       const line = layout.lines[i]
       const y = this._screenY + i
@@ -38,7 +42,9 @@ export class BidiTextRenderable extends TextRenderable {
       for (const cell of line.cells) {
         const x = x0 + cell.col
         if (x < 0 || x >= buffer.width) continue
-        paintBidiCell(buffer, x, y, cell.char, fg, bg, attributes)
+        const selected = selStart >= 0 && cell.glyph >= selStart && cell.glyph < selEnd
+        const colors = selected ? selectionColors : undefined
+        paintBidiCell(buffer, x, y, cell.char, colors?.fg ?? fg, colors?.bg ?? bg, attributes)
       }
     }
   }
