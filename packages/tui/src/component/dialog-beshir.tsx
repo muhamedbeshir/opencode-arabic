@@ -1,6 +1,5 @@
 import { createMemo, createSignal, onMount } from "solid-js"
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
-import path from "path"
+import { rename } from "node:fs/promises"
 import { useData } from "../context/data"
 import { useLocation } from "../context/location"
 import { useTuiPaths } from "../context/runtime"
@@ -8,53 +7,90 @@ import { DialogSelect, type DialogSelectOption } from "../ui/dialog-select"
 import { useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
 import { errorMessage } from "../util/error"
-
-// A skill is "disabled" by renaming its markdown file to "<file>.disabled",
-// which removes it from the skill scan (`{*.md,**/SKILL.md}`). The disabled set is
-// remembered so the toggle list can show and re-enable them.
-type DisabledEntry = { id: string; name: string; path: string }
-type OptionValue =
-  | { kind: "enabled"; id: string; name: string; path: string }
-  | { kind: "disabled"; entry: DisabledEntry }
+import {
+  beshirConfigPath,
+  beshirSkillsManifestPath,
+  readBeshirConfig,
+  readDisabledSkills,
+  reviewerModel,
+  writeDisabledSkills,
+  writeReviewerModel,
+  type DisabledSkill,
+} from "../util/beshir"
 
 export function DialogBeshir() {
   const dialog = useDialog()
   const data = useData()
   const location = useLocation()
   const paths = useTuiPaths()
-  const toast = useToast()
+  const [reviewer, setReviewer] = createSignal<string>()
+  const [disabled, setDisabled] = createSignal<DisabledSkill[]>([])
 
   dialog.setSize("large")
-  const manifest = () => path.join(paths.state, "beshir-skills.json")
-  const [disabled, setDisabled] = createSignal<DisabledEntry[]>([])
-  const [busy, setBusy] = createSignal(false)
-
   onMount(() => {
-    void readManifest()
+    void readBeshirConfig(beshirConfigPath(paths.home))
+      .then((config) => setReviewer(reviewerModel(config)))
+      .catch(() => {})
+    void readDisabledSkills(beshirSkillsManifestPath(paths.state))
       .then(setDisabled)
       .catch(() => setDisabled([]))
   })
 
-  async function readManifest(): Promise<DisabledEntry[]> {
-    const raw = await readFile(manifest(), "utf8").catch(() => undefined)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as { disabled?: unknown }
-    if (!Array.isArray(parsed.disabled)) return []
-    return parsed.disabled.flatMap((item): DisabledEntry[] => {
-      if (typeof item !== "object" || item === null) return []
-      const record = item as Partial<DisabledEntry>
-      if (typeof record.id !== "string" || typeof record.name !== "string" || typeof record.path !== "string") return []
-      return [{ id: record.id, name: record.name, path: record.path }]
-    })
-  }
+  const enabled = createMemo(() => (data.location.skill.list(location.ref) ?? []).length)
+  const options = createMemo<DialogSelectOption<string>[]>(() => [
+    {
+      title: "Skills",
+      description: "Turn individual skills on or off",
+      footer: `${enabled()} on · ${disabled().length} off`,
+      value: "skills",
+    },
+    {
+      title: "Reviewer model",
+      description: "Model the model-review skill uses to critique work before reporting done",
+      footer: reviewer() ?? "not set",
+      value: "reviewer",
+    },
+  ])
 
-  async function writeManifest(entries: DisabledEntry[]) {
-    await mkdir(paths.state, { recursive: true })
-    await writeFile(manifest(), JSON.stringify({ disabled: entries }, null, 2))
-  }
+  return (
+    <DialogSelect
+      title="Beshir settings"
+      options={options()}
+      footerHints={[{ title: "enter", label: "open" }]}
+      onSelect={(option) => {
+        if (option.value === "skills") {
+          dialog.replace(() => <DialogBeshirSkills />)
+          return
+        }
+        dialog.replace(() => <DialogBeshirReviewer />)
+      }}
+    />
+  )
+}
+
+type SkillValue =
+  | { kind: "enabled"; id: string; name: string; path: string }
+  | { kind: "disabled"; entry: DisabledSkill }
+
+function DialogBeshirSkills() {
+  const dialog = useDialog()
+  const data = useData()
+  const location = useLocation()
+  const paths = useTuiPaths()
+  const toast = useToast()
+  const manifest = () => beshirSkillsManifestPath(paths.state)
+  const [disabled, setDisabled] = createSignal<DisabledSkill[]>([])
+  const [busy, setBusy] = createSignal(false)
+  const back = () => dialog.replace(() => <DialogBeshir />)
+
+  onMount(() => {
+    void readDisabledSkills(manifest())
+      .then(setDisabled)
+      .catch(() => setDisabled([]))
+  })
 
   const enabled = createMemo(() => data.location.skill.list(location.ref) ?? [])
-  const options = createMemo<DialogSelectOption<OptionValue>[]>(() => [
+  const options = createMemo<DialogSelectOption<SkillValue>[]>(() => [
     ...enabled().map((skill) => ({
       title: skill.name,
       description: skill.description?.replace(/\s+/g, " ").trim(),
@@ -68,27 +104,22 @@ export function DialogBeshir() {
     })),
   ])
 
-  async function toggle(option: DialogSelectOption<OptionValue>) {
+  async function toggle(value: SkillValue) {
     if (busy()) return
     setBusy(true)
     try {
-      if (option.value.kind === "enabled") {
-        const target = option.value
-        await rename(target.path, `${target.path}.disabled`)
-        const next = [
-          ...disabled().filter((item) => item.id !== target.id),
-          { id: target.id, name: target.name, path: target.path },
-        ]
-        await writeManifest(next)
+      if (value.kind === "enabled") {
+        await rename(value.path, `${value.path}.disabled`)
+        const next = [...disabled().filter((item) => item.id !== value.id), { id: value.id, name: value.name, path: value.path }]
+        await writeDisabledSkills(manifest(), next)
         setDisabled(next)
-        toast.show({ message: `Disabled ${target.name}`, variant: "info" })
+        toast.show({ message: `Disabled ${value.name}`, variant: "info" })
       } else {
-        const entry = option.value.entry
-        await rename(`${entry.path}.disabled`, entry.path)
-        const next = disabled().filter((item) => item.id !== entry.id)
-        await writeManifest(next)
+        await rename(`${value.entry.path}.disabled`, value.entry.path)
+        const next = disabled().filter((item) => item.id !== value.entry.id)
+        await writeDisabledSkills(manifest(), next)
         setDisabled(next)
-        toast.show({ message: `Enabled ${entry.name}`, variant: "info" })
+        toast.show({ message: `Enabled ${value.entry.name}`, variant: "info" })
       }
       await data.location.skill.sync(location.ref).catch(() => {})
     } catch (error) {
@@ -104,9 +135,60 @@ export function DialogBeshir() {
       placeholder="Filter skills…"
       options={options()}
       emptyView={<text>No skills found</text>}
-      onSelect={(option) => void toggle(option)}
+      onCancel={back}
+      onSelect={(option) => void toggle(option.value)}
       footerHints={[{ title: "enter", label: "on / off" }]}
-      footer={<text>Enter toggles the selected skill. Disabled skills are renamed to *.disabled.</text>}
+      footer={<text>Enter toggles the skill. Disabled skills are renamed to *.disabled.</text>}
+    />
+  )
+}
+
+function DialogBeshirReviewer() {
+  const dialog = useDialog()
+  const data = useData()
+  const location = useLocation()
+  const paths = useTuiPaths()
+  const toast = useToast()
+  const [current, setCurrent] = createSignal<string>()
+  const back = () => dialog.replace(() => <DialogBeshir />)
+
+  onMount(() => {
+    void readBeshirConfig(beshirConfigPath(paths.home))
+      .then((config) => setCurrent(reviewerModel(config)))
+      .catch(() => {})
+  })
+
+  const options = createMemo<DialogSelectOption<string>[]>(() =>
+    (data.location.model.list(location.ref) ?? [])
+      .filter((model) => model.status !== "deprecated")
+      .map((model) => ({
+        title: model.name,
+        description: model.providerID,
+        category: model.providerID,
+        value: `${model.providerID}/${model.id}`,
+      })),
+  )
+
+  async function choose(model: string) {
+    try {
+      await writeReviewerModel(beshirConfigPath(paths.home), model)
+      toast.show({ message: `Reviewer model set to ${model}`, variant: "info" })
+      back()
+    } catch (error) {
+      toast.show({ title: "Beshir settings", message: errorMessage(error), variant: "error" })
+    }
+  }
+
+  return (
+    <DialogSelect
+      title="Beshir settings · Reviewer model"
+      placeholder="Filter models…"
+      options={options()}
+      current={current()}
+      emptyView={<text>No models available. Connect a provider first.</text>}
+      onCancel={back}
+      onSelect={(option) => void choose(option.value)}
+      footerHints={[{ title: "enter", label: "set" }]}
     />
   )
 }
