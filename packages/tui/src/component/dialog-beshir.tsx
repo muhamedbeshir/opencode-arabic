@@ -18,6 +18,12 @@ import {
   type DisabledSkill,
 } from "../util/beshir"
 
+// Skills that give the agent control of the desktop and the real browser. They
+// are ordinary skills, so this section is a filtered view of the same toggle
+// list: renaming SKILL.md to SKILL.md.disabled removes the skill from the
+// advertised set and the agent stops using it.
+const HARNESS_IDS = new Set(["windows-harness", "browser-harness"])
+
 export function DialogBeshir() {
   const dialog = useDialog()
   const data = useData()
@@ -36,13 +42,22 @@ export function DialogBeshir() {
       .catch(() => setDisabled([]))
   })
 
-  const enabled = createMemo(() => (data.location.skill.list(location.ref) ?? []).length)
+  const enabled = createMemo(() => data.location.skill.list(location.ref) ?? [])
+  const harnessOn = createMemo(() => enabled().filter((skill) => HARNESS_IDS.has(skill.id)).length)
+  const harnessOff = createMemo(() => disabled().filter((entry) => HARNESS_IDS.has(entry.id)).length)
+
   const options = createMemo<DialogSelectOption<string>[]>(() => [
     {
       title: "Skills",
       description: "Turn individual skills on or off",
-      footer: `${enabled()} on · ${disabled().length} off`,
+      footer: `${enabled().length} on · ${disabled().length} off`,
       value: "skills",
+    },
+    {
+      title: "Harnesses",
+      description: "Desktop and browser control harnesses",
+      footer: `${harnessOn()} on · ${harnessOff()} off`,
+      value: "harnesses",
     },
     {
       title: "Reviewer model",
@@ -62,6 +77,10 @@ export function DialogBeshir() {
           dialog.replace(() => <DialogBeshirSkills />)
           return
         }
+        if (option.value === "harnesses") {
+          dialog.replace(() => <DialogBeshirHarnesses />)
+          return
+        }
         dialog.replace(() => <DialogBeshirReviewer />)
       }}
     />
@@ -72,8 +91,12 @@ type SkillValue =
   | { kind: "enabled"; id: string; name: string; path: string }
   | { kind: "disabled"; entry: DisabledSkill }
 
-function DialogBeshirSkills() {
-  const dialog = useDialog()
+function SkillToggles(props: {
+  title: string
+  include: (id: string) => boolean
+  emptyText: string
+  back: () => void
+}) {
   const data = useData()
   const location = useLocation()
   const paths = useTuiPaths()
@@ -81,7 +104,6 @@ function DialogBeshirSkills() {
   const manifest = () => beshirSkillsManifestPath(paths.state)
   const [disabled, setDisabled] = createSignal<DisabledSkill[]>([])
   const [busy, setBusy] = createSignal(false)
-  const back = () => dialog.replace(() => <DialogBeshir />)
 
   onMount(() => {
     void readDisabledSkills(manifest())
@@ -89,7 +111,7 @@ function DialogBeshirSkills() {
       .catch(() => setDisabled([]))
   })
 
-  const enabled = createMemo(() => data.location.skill.list(location.ref) ?? [])
+  const enabled = createMemo(() => (data.location.skill.list(location.ref) ?? []).filter((skill) => props.include(skill.id)))
   const options = createMemo<DialogSelectOption<SkillValue>[]>(() => [
     ...enabled().map((skill) => ({
       title: skill.name,
@@ -97,11 +119,13 @@ function DialogBeshirSkills() {
       footer: "on",
       value: { kind: "enabled" as const, id: skill.id, name: skill.name, path: skill.path },
     })),
-    ...disabled().map((entry) => ({
-      title: entry.name,
-      footer: "off",
-      value: { kind: "disabled" as const, entry },
-    })),
+    ...disabled()
+      .filter((entry) => props.include(entry.id))
+      .map((entry) => ({
+        title: entry.name,
+        footer: "off",
+        value: { kind: "disabled" as const, entry },
+      })),
   ])
 
   async function toggle(value: SkillValue) {
@@ -131,14 +155,40 @@ function DialogBeshirSkills() {
 
   return (
     <DialogSelect
-      title="Beshir settings · Skills"
-      placeholder="Filter skills…"
+      title={props.title}
+      placeholder="Filter…"
       options={options()}
-      emptyView={<text>No skills found</text>}
-      onCancel={back}
+      emptyView={<text>{props.emptyText}</text>}
+      onCancel={props.back}
       onSelect={(option) => void toggle(option.value)}
       footerHints={[{ title: "enter", label: "on / off" }]}
-      footer={<text>Enter toggles the skill. Disabled skills are renamed to *.disabled.</text>}
+      footer={<text>Enter toggles the item. Disabled items are renamed to *.disabled.</text>}
+    />
+  )
+}
+
+function DialogBeshirSkills() {
+  const dialog = useDialog()
+  const back = () => dialog.replace(() => <DialogBeshir />)
+  return (
+    <SkillToggles
+      title="Beshir settings · Skills"
+      include={() => true}
+      emptyText="No skills found"
+      back={back}
+    />
+  )
+}
+
+function DialogBeshirHarnesses() {
+  const dialog = useDialog()
+  const back = () => dialog.replace(() => <DialogBeshir />)
+  return (
+    <SkillToggles
+      title="Beshir settings · Harnesses"
+      include={(id) => HARNESS_IDS.has(id)}
+      emptyText="No harnesses installed"
+      back={back}
     />
   )
 }
