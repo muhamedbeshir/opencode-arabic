@@ -573,6 +573,8 @@ export function Prompt(props: PromptProps) {
               (data.location.info()?.project.directory === "/" ? undefined : data.location.info()?.project.directory) ||
               data.location.default().directory ||
               paths.cwd,
+          }).catch((error) => {
+            toast.show({ title: "Failed to open editor", message: errorMessage(error), variant: "error" })
           })
           if (!content) return
           const normalized = normalizePromptContent(content)
@@ -1335,7 +1337,9 @@ export function Prompt(props: PromptProps) {
     if (currentMode === "shell") {
       move.startSubmit()
       const send = () => client.api.session.shell({ sessionID: target, command: inputText })
-      void (newSession ? newSession.gate.then(send).catch(newSession.recover) : send())
+      void (newSession ? newSession.gate.then(send) : send()).catch((error) =>
+        newSession ? newSession.recover(error) : fail("Failed to run shell command", error),
+      )
       setStore("mode", "normal")
     } else if (slashHead && isCommand) {
       const send = async () => {

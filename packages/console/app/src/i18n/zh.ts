@@ -36,6 +36,7 @@ export const dict = {
   "email.placeholder": "电子邮箱地址",
   "email.subscribe": "订阅",
   "email.success": "即将完成，请检查您的收件箱并确认您的邮箱地址",
+  "email.error": "订阅失败，请重试。",
 
   "notFound.title": "未找到页面 | OpenCode",
   "notFound.heading": "404 - 页面未找到",
@@ -57,22 +58,6 @@ export const dict = {
   "app.meta.description": "OpenCode - 开源编程代理。",
 
   "home.title": "OpenCode | 开源 AI 编程代理",
-
-  "temp.title": "OpenCode | 专为终端打造的 AI 编程代理",
-  "temp.hero.title": "专为终端打造的 AI 编程代理",
-  "temp.zen": "OpenCode Zen",
-  "temp.getStarted": "开始使用",
-  "temp.feature.native.title": "原生 TUI",
-  "temp.feature.native.body": "响应迅速、原生的、可定制主题的终端 UI",
-  "temp.feature.zen.beforeLink": "由 OpenCode 提供的",
-  "temp.feature.zen.link": "精选模型列表",
-  "temp.feature.zen.afterLink": "",
-  "temp.feature.models.beforeLink": "通过 Models.dev 支持 75+ LLM 提供商",
-  "temp.feature.models.afterLink": "，包括本地模型",
-  "temp.screenshot.caption": "使用 Tokyonight 主题的 OpenCode TUI",
-  "temp.screenshot.alt": "使用 Tokyonight 主题的 OpenCode TUI",
-  "temp.logoLightAlt": "opencode logo 亮色",
-  "temp.logoDarkAlt": "opencode logo 暗色",
 
   "home.banner.badge": "新",
 
@@ -135,11 +120,9 @@ export const dict = {
   "home.faq.q6": "OpenCode 多少钱？",
   "home.faq.a6": "OpenCode 是 100% 免费使用的。它还自带一组免费模型。如果您连接其他提供商，可能会产生额外费用。",
   "home.faq.q7": "数据和隐私如何？",
-  "home.faq.a7.p1": "只有当您使用我们的免费模型或创建分享链接时，您的数据和信息才会被存储。",
+  "home.faq.a7.p1": "只有当您使用我们的免费模型时，您的数据和信息才会被存储。",
   "home.faq.a7.p2.beforeModels": "了解更多关于",
   "home.faq.a7.p2.modelsLink": "我们的模型",
-  "home.faq.a7.p2.and": "和",
-  "home.faq.a7.p2.shareLink": "分享页面",
   "home.faq.q8": "OpenCode 是开源的吗？",
   "home.faq.a8.p1": "是的，OpenCode 是完全开源的。源代码公开在",
   "home.faq.a8.p2": "遵循",
@@ -210,7 +193,6 @@ export const dict = {
   "zen.privacy.beforeExceptions": "所有 Zen 模型均托管在美国。提供商遵循零留存政策，不使用您的数据进行模型训练，",
   "zen.privacy.exceptionsLink": "以下例外情况除外",
 
-  "go.promo.catJam": "匿名模型 Cat Jam Free 限时免费开放。",
   "go.title": "OpenCode Go | 人人可用的低成本编程模型",
   "go.meta.description": "Go 每月 $10，提供充裕的使用限额，并可可靠访问领先的编程模型。",
   "go.hero.title": "人人可用的低成本编程模型",
@@ -236,6 +218,7 @@ export const dict = {
   "go.graph.requests": "预估请求数 / 5 小时",
   "go.graph.allowance": "每月使用额度",
   "go.graph.new": "新",
+  "go.graph.bonus": "{{count}} 倍用量",
   "go.graph.scale": "请求数采用非线性刻度",
   "go.graph.showAll": "查看全部 {{count}} 个模型",
   "go.graph.showLess": "收起模型",
@@ -246,7 +229,6 @@ export const dict = {
   "go.problem.title": "Go 解决了什么问题？",
   "go.problem.body":
     "我们致力于将 OpenCode 体验带给尽可能多的人。OpenCode Go 是一款每月 $10 的低成本订阅服务。它提供充裕的额度，并让您能可靠地使用最强大的开源模型。",
-  "go.problem.subtitle": " ",
   "go.problem.item1": "低成本订阅定价",
   "go.problem.item2": "充裕的限额和可靠的访问",
   "go.problem.item3": "为尽可能多的程序员打造",
@@ -287,7 +269,7 @@ export const dict = {
     "ZDR 会禁用依赖所存储数据的重要 API 功能，包括有状态的 Responses API、Files and Collections 和 Batch API。",
   "go.faq.a5.gptRetention": "所有 API 功能的使用都会生成滥用监控日志，并最多保留 30 天。",
   "go.faq.a5.museRetention": "以允许使用你的提示词和补全结果训练未来的 Meta 模型为交换，token 价格可获得大幅折扣。",
-  "go.faq.a5.catJamRetention": "在免费期间，收集的数据可能会用于改进模型。",
+  "go.faq.a5.geminiRetention": "你的提示词和模型输出可能会被用于训练未来的 Google 模型。",
   "go.faq.a5.learnMore": "了解更多",
   "go.faq.a5.deepseekRetention": "ZDR 协议每月续签。当前协议有效期至 2026 年 10 月 31 日。",
   "go.faq.q6": "我可以充值余额吗？",
@@ -299,36 +281,10 @@ export const dict = {
 
   "go.faq.q9": "免费模型和 Go 之间的区别是什么？",
   "go.faq.a9":
-    "免费模型包含 Big Pickle 加上当时可用的促销模型，每天有 200 次请求的配额。Go 提供精选模型阵容，并在滚动窗口内执行更高的请求配额：每 5 小时为月额度的 20%，每周为 50%，每月为 100%。具体额度可能因模型而异（实际请求次数因模型和使用情况而异）。",
+    "免费模型包含 Big Pickle 加上当时可用的促销模型。Go 提供精选模型阵容，并在滚动窗口内执行更高的请求配额：每 5 小时为月额度的 20%，每周为 50%，每月为 100%。具体额度可能因模型而异（实际请求次数因模型和使用情况而异）。",
   "go.faq.q10": "我可以退款吗？",
   "go.faq.a10":
     "如果扣款发生在过去 14 天内，并且您在该计费周期内尚未使用任何 Go 额度，您可能符合退款条件。请{{contact}}申请退款。",
-
-  "black.meta.title": "OpenCode Black | 访问全球顶尖编程模型",
-  "black.meta.description": "通过 OpenCode Black 订阅计划使用 Claude, GPT, Gemini 等模型。",
-  "black.hero.title": "访问全球顶尖编程模型",
-  "black.hero.subtitle": "包括 Claude, GPT, Gemini 等",
-  "black.title": "OpenCode Black | 定价",
-  "black.paused": "Black 订阅已暂时暂停注册。",
-  "black.plan.icon20": "Black 20 计划",
-  "black.plan.icon100": "Black 100 计划",
-  "black.plan.icon200": "Black 200 计划",
-  "black.plan.multiplier100": "用量是 Black 20 的 5 倍",
-  "black.plan.multiplier200": "用量是 Black 20 的 20 倍",
-  "black.price.perMonth": "/ 月",
-  "black.price.perPersonBilledMonthly": "每人每月",
-  "black.terms.1": "您的订阅不会立即开始",
-  "black.terms.2": "您将被加入候补名单，并很快激活",
-  "black.terms.3": "您的卡只会在订阅激活时扣费",
-  "black.terms.4": "适用使用限制，高度自动化的使用可能会更快达到限制",
-  "black.terms.5": "订阅仅限个人，团队请联系企业版",
-  "black.terms.6": "未来可能会调整限制或停止计划",
-  "black.terms.7": "随时取消订阅",
-  "black.finePrint.beforeTerms": "显示价格不含税",
-  "black.finePrint.terms": "服务条款",
-  "black.workspace.title": "OpenCode Black | 选择工作区",
-  "black.workspace.selectPlan": "为此计划选择一个工作区",
-  "black.workspace.name": "工作区 {{n}}",
 
   "download.title": "OpenCode | 下载",
   "download.meta.description": "下载适用于 macOS, Windows, 和 Linux 的 OpenCode",
@@ -356,10 +312,6 @@ export const dict = {
   "download.faq.a5.p2.beforeZen":
     "任何额外费用都来自您对模型提供商的订阅。虽然 OpenCode 支持任何模型提供商，但我们建议使用",
   "download.faq.a5.p2.afterZen": "。",
-
-  "download.faq.a6.p1": "只有当您在 OpenCode 中创建分享链接时，您的数据和信息才会被存储。",
-  "download.faq.a6.p2.beforeShare": "了解更多关于",
-  "download.faq.a6.shareLink": "分享页面",
 
   "enterprise.title": "OpenCode | 面向组织的 OpenCode 企业版解决方案",
   "enterprise.meta.description": "联系 OpenCode 获取企业版解决方案",
@@ -395,6 +347,7 @@ export const dict = {
   "enterprise.form.error.invalidEmailFormat": "邮箱格式无效。",
   "enterprise.form.error.invalidInferenceSpend": "请选择有效的推理支出范围。",
   "enterprise.form.error.internalServer": "内部服务器错误。",
+  "enterprise.form.error.captcha": "验证码验证失败，请重试。",
   "enterprise.faq.title": "常见问题",
   "enterprise.faq.q1": "什么是 OpenCode 企业版？",
   "enterprise.faq.a1":

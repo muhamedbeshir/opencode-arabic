@@ -4,6 +4,9 @@ import PromptFooter from "../feature-plugins/prompt/footer"
 import SidebarContext from "../feature-plugins/sidebar/context"
 import SidebarFooter from "../feature-plugins/sidebar/footer"
 import SidebarMcp from "../feature-plugins/sidebar/mcp"
+// The fork ships its own todo panel (SidebarTodos) plus a subagent tree; the
+// upstream SidebarTodo panel is intentionally not registered to avoid two todo
+// lists rendering side by side.
 import SidebarTodos from "../feature-plugins/sidebar/todos"
 import SidebarSubagents from "../feature-plugins/sidebar/subagents"
 import DiffViewer from "../feature-plugins/system/diff-viewer"

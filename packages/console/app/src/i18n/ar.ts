@@ -35,6 +35,7 @@ export const dict = {
   "email.placeholder": "عنوان البريد الإلكتروني",
   "email.subscribe": "اشتراك",
   "email.success": "تبقّت خطوة واحدة: تحقق من بريدك وأكّد عنوانك",
+  "email.error": "تعذّر الاشتراك. يُرجى المحاولة مرة أخرى.",
 
   "notFound.title": "غير موجود | opencode",
   "notFound.heading": "404 - الصفحة غير موجودة",
@@ -56,22 +57,6 @@ export const dict = {
   "app.meta.description": "OpenCode - وكيل البرمجة مفتوح المصدر.",
 
   "home.title": "OpenCode | وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
-
-  "temp.title": "opencode | وكيل برمجة بالذكاء الاصطناعي مبني للطرفية",
-  "temp.hero.title": "وكيل البرمجة بالذكاء الاصطناعي المبني للطرفية",
-  "temp.zen": "opencode zen",
-  "temp.getStarted": "ابدأ",
-  "temp.feature.native.title": "واجهة طرفية أصلية",
-  "temp.feature.native.body": "واجهة مستخدم طرفية سريعة الاستجابة، أصلية، وقابلة للتخصيص",
-  "temp.feature.zen.beforeLink": "قائمة",
-  "temp.feature.zen.link": "منسقة من النماذج",
-  "temp.feature.zen.afterLink": "مقدمة من opencode",
-  "temp.feature.models.beforeLink": "يدعم أكثر من 75 مزود LLM من خلال",
-  "temp.feature.models.afterLink": "، بما في ذلك النماذج المحلية",
-  "temp.screenshot.caption": "واجهة OpenCode الطرفية مع سمة tokyonight",
-  "temp.screenshot.alt": "واجهة OpenCode الطرفية بسمة tokyonight",
-  "temp.logoLightAlt": "شعار opencode الفاتح",
-  "temp.logoDarkAlt": "شعار opencode الداكن",
 
   "home.banner.badge": "جديد",
 
@@ -138,11 +123,9 @@ export const dict = {
   "home.faq.a6":
     "OpenCode مجاني 100% للاستخدام. كما يأتي مع مجموعة من النماذج المجانية. قد توجد تكاليف إضافية إذا ربطت مزوّدًا آخر.",
   "home.faq.q7": "ماذا عن البيانات والخصوصية؟",
-  "home.faq.a7.p1": "لا يتم تخزين بياناتك ومعلوماتك إلا عندما تستخدم نماذجنا المجانية أو تنشئ روابط قابلة للمشاركة.",
+  "home.faq.a7.p1": "لا يتم تخزين بياناتك ومعلوماتك إلا عندما تستخدم نماذجنا المجانية.",
   "home.faq.a7.p2.beforeModels": "اعرف المزيد عن",
   "home.faq.a7.p2.modelsLink": "نماذجنا",
-  "home.faq.a7.p2.and": "و",
-  "home.faq.a7.p2.shareLink": "صفحات المشاركة",
   "home.faq.q8": "هل OpenCode مفتوح المصدر؟",
   "home.faq.a8.p1": "نعم، OpenCode مفتوح المصدر بالكامل. الكود المصدري متاح علنًا على",
   "home.faq.a8.p2": "بموجب",
@@ -218,7 +201,6 @@ export const dict = {
     "تتم استضافة جميع نماذج Zen في الولايات المتحدة. يتبع المزودون سياسة عدم الاحتفاظ بالبيانات ولا يستخدمون بياناتك لتدريب النماذج، مع",
   "zen.privacy.exceptionsLink": "الاستثناءات التالية",
 
-  "go.promo.catJam": "يتوفر النموذج المجهول Cat Jam Free مجانًا لفترة محدودة.",
   "go.title": "OpenCode Go | نماذج برمجة منخفضة التكلفة للجميع",
   "go.meta.description": "يبلغ سعر Go ‏$10/شهر، مع حدود استخدام سخية ووصول موثوق إلى نماذج البرمجة الرائدة.",
   "go.hero.title": "نماذج برمجة منخفضة التكلفة للجميع",
@@ -244,6 +226,7 @@ export const dict = {
   "go.graph.requests": "الطلبات المقدّرة / ٥ ساعات",
   "go.graph.allowance": "الاستخدام الشهري",
   "go.graph.new": "جديد",
+  "go.graph.bonus": "استخدام مضاعف {{count}} مرات",
   "go.graph.scale": "مقياس غير خطي لعدد الطلبات",
   "go.graph.showAll": "عرض جميع النماذج ({{count}})",
   "go.graph.showLess": "عرض نماذج أقل",
@@ -254,7 +237,6 @@ export const dict = {
   "go.problem.title": "ما المشكلة التي يحلها Go؟",
   "go.problem.body":
     "نحن نركز على تقديم تجربة OpenCode لأكبر عدد ممكن من الناس. OpenCode Go هو اشتراك منخفض التكلفة بسعر $10/شهر. يوفر حدودا سخية ووصولا موثوقا إلى نماذج المصدر المفتوح الأكثر قدرة.",
-  "go.problem.subtitle": " ",
   "go.problem.item1": "أسعار اشتراك منخفضة التكلفة",
   "go.problem.item2": "حدود سخية ووصول موثوق",
   "go.problem.item3": "مصمم لأكبر عدد ممكن من المبرمجين",
@@ -298,7 +280,7 @@ export const dict = {
     "تُنشأ سجلات مراقبة إساءة الاستخدام لكل استخدام لميزات API، ويُحتفظ بها لمدة تصل إلى 30 يومًا.",
   "go.faq.a5.museRetention":
     "أسعار توكنات مخفّضة للغاية مقابل منح الإذن باستخدام مطالباتك وإكمالات النموذج لتدريب نماذج Meta المستقبلية.",
-  "go.faq.a5.catJamRetention": "خلال فترته المجانية، قد تُستخدم البيانات التي يتم جمعها لتحسين النموذج.",
+  "go.faq.a5.geminiRetention": "قد تُستخدم مطالباتك وإكمالات النموذج لتدريب نماذج Google المستقبلية.",
   "go.faq.a5.learnMore": "اعرف المزيد",
   "go.faq.a5.deepseekRetention": "تُجدَّد اتفاقية ZDR شهريًا. الاتفاقية الحالية سارية حتى 31 أكتوبر 2026.",
   "go.faq.q6": "هل يمكنني شحن رصيد إضافي؟",
@@ -310,36 +292,10 @@ export const dict = {
 
   "go.faq.q9": "ما الفرق بين النماذج المجانية وGo؟",
   "go.faq.a9":
-    "تشمل النماذج المجانية Big Pickle بالإضافة إلى النماذج الترويجية المتاحة في ذلك الوقت، مع حصة قدرها 200 طلب/يوم. يقدّم Go مجموعة منسقة من النماذج مع حصص طلبات أعلى عبر نوافذ متجددة: 20% من الحصة الشهرية لكل 5 ساعات، و50% لكل أسبوع، و100% لكل شهر. وقد تختلف الحصص حسب النموذج (تختلف أعداد الطلبات الفعلية حسب النموذج والاستخدام).",
+    "تشمل النماذج المجانية Big Pickle بالإضافة إلى النماذج الترويجية المتاحة في ذلك الوقت. يقدّم Go مجموعة منسقة من النماذج مع حصص طلبات أعلى عبر نوافذ متجددة: 20% من الحصة الشهرية لكل 5 ساعات، و50% لكل أسبوع، و100% لكل شهر. وقد تختلف الحصص حسب النموذج (تختلف أعداد الطلبات الفعلية حسب النموذج والاستخدام).",
   "go.faq.q10": "هل يمكنني استرداد أموالي؟",
   "go.faq.a10":
     "قد تكون مؤهلًا لاسترداد أموالك إذا تم الخصم خلال آخر 14 يومًا ولم تستخدم مخصصات Go خلال فترة الفوترة تلك. {{contact}} لطلب استرداد الأموال.",
-
-  "black.meta.title": "OpenCode Black | الوصول إلى أفضل نماذج البرمجة في العالم",
-  "black.meta.description": "احصل على وصول إلى Claude، GPT، Gemini والمزيد مع خطط اشتراك OpenCode Black.",
-  "black.hero.title": "الوصول إلى أفضل نماذج البرمجة في العالم",
-  "black.hero.subtitle": "بما في ذلك Claude، GPT، Gemini والمزيد",
-  "black.title": "OpenCode Black | الأسعار",
-  "black.paused": "التسجيل في خطة Black متوقف مؤقتًا.",
-  "black.plan.icon20": "خطة Black 20",
-  "black.plan.icon100": "خطة Black 100",
-  "black.plan.icon200": "خطة Black 200",
-  "black.plan.multiplier100": "استخدام أكثر بـ 5 أضعاف من Black 20",
-  "black.plan.multiplier200": "استخدام أكثر بـ 20 ضعفًا من Black 20",
-  "black.price.perMonth": "شهريًا",
-  "black.price.perPersonBilledMonthly": "للشخص الواحد، يُفوتر شهريًا",
-  "black.terms.1": "لن يبدأ اشتراكك على الفور",
-  "black.terms.2": "ستتم إضافتك إلى قائمة الانتظار وتفعيلك قريبًا",
-  "black.terms.3": "لن يتم خصم المبلغ من بطاقتك إلا عند تفعيل اشتراكك",
-  "black.terms.4": "تطبق حدود الاستخدام، وقد يصل الاستخدام المؤتمت بكثافة إلى الحدود بشكل أسرع",
-  "black.terms.5": "الاشتراكات للأفراد، تواصل مع قسم المؤسسات للفرق",
-  "black.terms.6": "قد يتم تعديل الحدود وقد يتم إيقاف الخطط في المستقبل",
-  "black.terms.7": "ألغِ اشتراكك في أي وقت",
-  "black.finePrint.beforeTerms": "الأسعار المعروضة لا تشمل الضرائب المطبقة",
-  "black.finePrint.terms": "شروط الخدمة",
-  "black.workspace.title": "OpenCode Black | اختر مساحة العمل",
-  "black.workspace.selectPlan": "اختر مساحة عمل لهذه الخطة",
-  "black.workspace.name": "مساحة العمل {{n}}",
 
   "download.title": "OpenCode | تنزيل",
   "download.meta.description": "نزّل OpenCode لـ macOS، Windows، وLinux",
@@ -367,10 +323,6 @@ export const dict = {
   "download.faq.a5.p2.beforeZen":
     "أي تكاليف إضافية ستأتي من اشتراكك لدى مزود النماذج. بينما يعمل OpenCode مع أي مزود نماذج، نوصي باستخدام",
   "download.faq.a5.p2.afterZen": ".",
-
-  "download.faq.a6.p1": "يتم حفظ بياناتك ومعلوماتك فقط عند إنشاء روابط قابلة للمشاركة في OpenCode.",
-  "download.faq.a6.p2.beforeShare": "اعرف المزيد عن",
-  "download.faq.a6.shareLink": "صفحات المشاركة",
 
   "enterprise.title": "OpenCode | حلول المؤسسات لمنظمتك",
   "enterprise.meta.description": "تواصل مع OpenCode لحلول المؤسسات",
@@ -407,6 +359,7 @@ export const dict = {
   "enterprise.form.error.invalidEmailFormat": "تنسيق البريد الإلكتروني غير صالح.",
   "enterprise.form.error.invalidInferenceSpend": "اختر نطاقًا صالحًا للإنفاق على الاستدلال.",
   "enterprise.form.error.internalServer": "خطأ داخلي في الخادم.",
+  "enterprise.form.error.captcha": "فشل التحقق من captcha. يرجى المحاولة مرة أخرى.",
   "enterprise.faq.title": "الأسئلة الشائعة",
   "enterprise.faq.q1": "ما هو OpenCode Enterprise؟",
   "enterprise.faq.a1":
