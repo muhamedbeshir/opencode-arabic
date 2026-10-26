@@ -3,6 +3,7 @@ import PromptBtw from "../feature-plugins/prompt/btw"
 import PromptFooter from "../feature-plugins/prompt/footer"
 import SidebarContext from "../feature-plugins/sidebar/context"
 import SidebarFooter from "../feature-plugins/sidebar/footer"
+import SidebarLimit from "../feature-plugins/sidebar/limit"
 import SidebarMcp from "../feature-plugins/sidebar/mcp"
 // The fork ships its own todo panel (SidebarTodos) plus a subagent tree; the
 // upstream SidebarTodo panel is intentionally not registered to avoid two todo
@@ -22,6 +23,7 @@ export const builtins = [
   PromptFooter,
   PromptBtw,
   SidebarContext,
+  SidebarLimit,
   SidebarMcp,
   SidebarTodos,
   SidebarSubagents,
