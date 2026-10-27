@@ -1,4 +1,4 @@
-import {
+﻿import {
   CodeRenderable,
   MarkdownRenderable,
   TextTableRenderable,
@@ -93,7 +93,7 @@ function ensureChunksWrapped(renderable: CodeRenderable, state: BidiCodeState) {
 }
 
 // 0.6.x paints text through the native scene, which captures each class's
-// prototype.renderSelf at definition time — replacing the prototype method is
+// prototype.renderSelf at definition time â€” replacing the prototype method is
 // therefore ignored (prose rendered in logical order). Markdown builds every
 // prose block through createMarkdownCodeRenderable, which the captured render
 // body dispatches through `this`, so wrapping it and attaching a per-instance
@@ -133,6 +133,17 @@ export function attachBidiCodePaint(renderable: CodeRenderable) {
   ;(renderable as CodePaintable).renderSelf = (buffer: OptimizedBuffer) => {
     paintBidiBlock(renderable, state, buffer, () => stockCodeRenderSelf.call(renderable, buffer))
   }
+  publishPaintHook(renderable)
+}
+
+// 0.7 captures the paint hook on the instance at construction, so an
+// own-property override stays invisible to the scene until the hooks are
+// re-read; 0.6 dispatched own properties directly and has no refreshHooks, so
+// the call is only there when the version provides it.
+function publishPaintHook(renderable: CodeRenderable) {
+  const refresh = (renderable as unknown as { refreshHooks?: () => void }).refreshHooks
+  if (typeof refresh !== "function") return
+  refresh.call(renderable)
 }
 
 // Catalogue override so JSX <code> surfaces (inline markdown snippets rendered
@@ -323,3 +334,4 @@ export function installBidiTablePaint() {
     }
   }
 }
+
