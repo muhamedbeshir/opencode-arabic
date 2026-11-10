@@ -1064,7 +1064,6 @@ export function Session(props: {
     const message = messagesBeforeRevert().find(
       (candidate): candidate is SessionMessageUser => candidate.id === messageID && candidate.type === "user",
     )
-    const target = prompt()
     void (async () => {
       if (pendingDeliveries().has(messageID)) {
         if (!(await mutatePending("cancel", messageID))) return
@@ -1073,7 +1072,9 @@ export function Session(props: {
         await client.api.experimental.session.wait({ sessionID })
         await client.api.session.revert.stage({ sessionID, messageID })
       }
-      if (message) target?.set({ ...projectedPromptInput(message), pasted: [] })
+      if (!message) return
+      const restored = await restorePrompt(message).catch(() => undefined)
+      appendToSessionPrompt(sessionID, restored, renderer.widthMethod)
     })().catch((error) => toast.show({ message: errorMessage(error), variant: "error", duration: 5000 }))
   }
 
