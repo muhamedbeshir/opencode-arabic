@@ -1073,7 +1073,7 @@ export function Session(props: {
         await client.api.session.revert.stage({ sessionID, messageID })
       }
       if (!message) return
-      const restored = await restorePrompt(message).catch(() => undefined)
+      const restored = await restorePrompt(message)
       appendToSessionPrompt(sessionID, restored, renderer.widthMethod)
     })().catch((error) => toast.show({ message: errorMessage(error), variant: "error", duration: 5000 }))
   }
