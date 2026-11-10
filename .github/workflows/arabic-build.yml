@@ -59,14 +59,15 @@ jobs:
 
       - name: Verify binary exists
         run: |
-          test -f packages/cli/dist/opencode-windows-x64/bin/opencode.exe
-          ls -lh packages/cli/dist/opencode-windows-x64/bin/
+          BIN="packages/cli/dist/cli-windows-x64/bin/opencode.exe"
+          test -f "$BIN"
+          ls -lh "$BIN"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: opencode-arabic-windows-x64
-          path: packages/cli/dist/opencode-windows-x64/bin/opencode.exe
+          path: packages/cli/dist/cli-windows-x64/bin/opencode.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -80,5 +81,5 @@ jobs:
               --title "Arabic build (latest)" \
               --notes "Automated Windows x64 build of the \`arabic\` branch."
           gh release upload arabic-latest \
-            "packages/cli/dist/opencode-windows-x64/bin/opencode.exe#opencode-arabic-windows-x64.exe" \
+            "packages/cli/dist/cli-windows-x64/bin/opencode.exe#opencode-arabic-windows-x64.exe" \
             --clobber
