@@ -2,7 +2,7 @@ import { NodeFileSystem, NodeServices } from "@effect/platform-node"
 import { Global } from "@opencode/util/global"
 import { OPENCODE_VERSION } from "../src/version"
 import { expect, test } from "bun:test"
-import { ConfigProvider, Console, Effect, FileSystem, Option, Scope } from "effect"
+import { Console, Effect, FileSystem, Option, Scope } from "effect"
 import { Command } from "effect/cli"
 import fs from "node:fs/promises"
 import os from "node:os"
@@ -51,40 +51,16 @@ test("resolution groups Effect-native lifecycle operations only for the managed 
     expect(Effect.isEffect(resolved.service.restart())).toBe(true)
     expect(await runPromise(resolved.service.reconnect())).toEqual(resolved.endpoint)
 
+    const existing = await runPromise(ServerConnection.resolve({ autostart: false }))
+    expect(existing.endpoint.url).toBe(server.url.toString())
+    expect(existing.service).toBeDefined()
+
     const explicit = await runPromise(ServerConnection.resolve({ server: server.url.toString() }))
     expect(explicit.endpoint.url).toBe(server.url.toString())
     expect(explicit.service).toBeUndefined()
   } finally {
     await server.stop(true)
     await fs.rm(root, { recursive: true, force: true })
-  }
-})
-
-test("--server authenticates with the configured username", async () => {
-  const server = Bun.serve({
-    port: 0,
-    fetch(request) {
-      if (request.headers.get("authorization") !== `Basic ${btoa("custom:secret")}`)
-        return new Response(null, { status: 401 })
-      return Response.json({ version: OPENCODE_VERSION, pid: process.pid, urls: [] })
-    },
-  })
-  try {
-    const resolved = await Effect.runPromise(
-      ServerConnection.resolve({ server: server.url.toString() }).pipe(
-        Effect.provide(
-          ConfigProvider.layer(
-            ConfigProvider.fromEnv({ env: { OPENCODE_PASSWORD: "secret", OPENCODE_SERVER_USERNAME: "custom" } }),
-          ),
-        ),
-        Effect.provide(Global.layerWith({})),
-        Effect.provide(NodeFileSystem.layer),
-        Effect.scoped,
-      ),
-    )
-    expect(resolved.endpoint.auth).toEqual({ type: "basic", username: "custom", password: "secret" })
-  } finally {
-    await server.stop(true)
   }
 })
 

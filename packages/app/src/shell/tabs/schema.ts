@@ -47,7 +47,7 @@ export const Info = Persistence.struct({
 
 export const Infos = Schema.Record(Schema.String, Schema.mutableKey(Info))
 
-// The side region keeps the name it was stored under before extensions.
+// The side region keeps the name it was stored under before plugins.
 export const Regions = Schema.Record(
   Schema.String,
   Schema.mutableKey(
@@ -65,6 +65,7 @@ export const ClosedTab = Persistence.struct({
   tab: SessionCodec,
   index: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   info: Persistence.optional(Info),
+  closed: Persistence.optional(Schema.Finite),
 })
 
 export const Closed = Persistence.array(ClosedTab)

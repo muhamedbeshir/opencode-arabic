@@ -68,15 +68,12 @@ export interface Ref extends Schema.Schema.Type<typeof Ref> {}
 export const Ref = Schema.Struct({
   id: ID,
   name: Schema.String,
-  /** Declared in provider configuration, independently of credential connections. */
-  configured: optional(Schema.Boolean),
   metadata: optional(Schema.Record(Schema.String, Schema.Any)),
 }).annotate({ identifier: "Integration.Ref" })
 
 export const Info = Schema.Struct({
   id: ID,
   name: Schema.String,
-  configured: optional(Schema.Boolean),
   metadata: optional(Schema.Record(Schema.String, Schema.Any)),
   methods: Schema.Array(Method),
   connections: Schema.Array(Connection.Info),
@@ -100,6 +97,8 @@ export class Attempt extends Schema.Class<Attempt>("Integration.Attempt")({
   url: Schema.String,
   instructions: Schema.String,
   mode: Schema.Literals(["auto", "code"]),
+  /** An `auto` attempt also accepts the redirect URL pasted from the browser as its `code`. */
+  paste: Schema.optionalKey(Schema.Literal(true)),
   time: AttemptTime,
 }) {}
 
