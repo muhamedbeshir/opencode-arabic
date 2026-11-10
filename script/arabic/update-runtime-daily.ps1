@@ -65,14 +65,18 @@ if (-not $Force) {
 }
 
 Write-Log "run: checking $Updater"
+$succeeded = $false
 try {
   & $Updater 2>&1 | ForEach-Object { Write-Log "  $_" }
+  $succeeded = $true
   Write-Log "run: done"
 } catch {
   Write-Log "error: $($_.Exception.Message)"
-} finally {
-  # Stamp the attempt, successful or not, so a broken download cannot turn into
-  # a check on every single logon.
+}
+
+# Stamp only a completed run: a machine that logs on offline must not lose its
+# next chance to update for a whole day.
+if ($succeeded) {
   try {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $StampPath) | Out-Null
     (Get-Date).ToUniversalTime().ToString("o") | Set-Content -LiteralPath $StampPath
