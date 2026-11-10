@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { expect, test } from "bun:test"
-import { SyntaxStyle } from "@opentui/core"
+import { TextTableRenderable, SyntaxStyle } from "@opentui/core"
 import { testRender, useRenderer } from "@opentui/solid"
 import { hasRtl } from "../../src/util/bidi"
 import "../../src/component/bidi-elements"
@@ -33,14 +33,24 @@ test("the text element reorders RTL and leaves English alone", async () => {
   expect(ltr.captureCharFrame().split("\n")[0].trim()).toBe("Hello world")
 })
 
-test("the input and textarea elements render RTL", async () => {
-  await using textarea = await testRender(() => <bidi_textarea initialValue={logical} />, { width: 24, height: 2 })
-  await textarea.renderOnce()
-  expect(hasRtl(textarea.captureCharFrame())).toBe(true)
-
+// @opentui 0.8 paints editor nodes through the native scene, so the captured
+// frame of `testRender` cannot see textarea content at all: the stock textarea
+// is blank there too. Assert what the harness can still prove - the single-line
+// input takes the bidi path, and the RTL textarea paints exactly what the stock
+// painter does (it never paints less).
+test("the input renders RTL and the textarea matches the stock painter", async () => {
   await using input = await testRender(() => <bidi_input value={logical} />, { width: 24, height: 1 })
   await input.renderOnce()
   expect(hasRtl(input.captureCharFrame())).toBe(true)
+
+  const paint = async (node: () => unknown) => {
+    await using app = await testRender(node, { width: 24, height: 2 })
+    await app.renderOnce()
+    return app.captureCharFrame()
+  }
+  const stock = await paint(() => <textarea initialValue={logical} />)
+  const bidi = await paint(() => <bidi_textarea initialValue={logical} />)
+  expect(bidi).toBe(stock)
 })
 
 // Markdown prose is painted by the per-instance renderSelf override installed in
@@ -79,4 +89,46 @@ test("markdown table cells paint RTL", async () => {
   )
   const frame = await settledFrame(md, hasRtl)
   expect(frame).toContain([..."الاسم"].reverse().join(""))
+})
+
+// The bidi cell painter is a prototype override keyed by the paint entry point
+// the installed @opentui exposes. When that name changes, the override stops
+// being called and tables quietly fall back to logical order (Arabic reads
+// backwards), which no type check catches: assert the install landed.
+test("table paint is installed on the entry point the core exposes", () => {
+  const proto = TextTableRenderable.prototype as unknown as { __bidiTable?: string; [key: string]: unknown }
+  const entry = proto.__bidiTable
+  expect(entry === "drawCells" || entry === "drawCellRange").toBe(true)
+  expect(typeof proto[entry!]).toBe("function")
+})
+
+// A cell that wraps must stay inside the row height the native layout measured.
+// The bidi wrapper produces the line breaks, so an off-by-one there paints over
+// the bottom border and into the next row (the "broken table" symptom).
+test("a wrapped RTL cell does not paint over the row border", async () => {
+  const wrapping = [
+    "| العمود | الوصف |",
+    "| --- | --- |",
+    "| الملخص | هذه خلية نصها طويل جدا لكي يلتف على أكثر من سطر داخل الجدول |",
+  ].join("\n")
+  await using md = await testRender(
+    () => {
+      const renderer = useRenderer()
+      const syntaxStyle = SyntaxStyle.fromStyles({ default: { fg: "#ffffff" } }, renderer.nativeScene)
+      return (
+        <markdown
+          syntaxStyle={syntaxStyle}
+          content={wrapping}
+          streaming={false}
+          internalBlockMode="top-level"
+          tableOptions={{ style: "grid", cellPaddingX: 1 }}
+        />
+      )
+    },
+    { width: 44, height: 10, remote: true },
+  )
+  const frame = await settledFrame(md, hasRtl)
+  const bottom = frame.split("\n").filter((line) => line.includes("└"))
+  expect(bottom).toHaveLength(1)
+  expect(bottom[0]).toMatch(/^[└┴┘─]+$/)
 })

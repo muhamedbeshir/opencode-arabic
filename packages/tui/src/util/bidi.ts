@@ -182,6 +182,18 @@ function wrapGlyphs(
       continue
     }
     if (width + glyph.width > limit && i > lineStart) {
+      // A break space that overflows is dropped instead of forcing an earlier
+      // break: the native text buffer ends the line just before it, and a
+      // stricter rule here produces an extra wrapped line that no longer fits
+      // the row height the table measured.
+      if (WHITESPACE.test(glyph.char)) {
+        ranges.push([lineStart, i])
+        lineStart = i + 1
+        width = 0
+        breakAt = -1
+        breakOutside = -1
+        continue
+      }
       const cut = breakOutside > lineStart ? breakOutside : breakAt
       if (cut > lineStart) {
         ranges.push([lineStart, cut])

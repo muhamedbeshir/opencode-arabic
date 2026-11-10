@@ -253,14 +253,30 @@ type TableCell = {
 
 type TableInternals = {
   _cells: Array<Array<TableCell | undefined>>
+  _rowCount: number
   _columnCount: number
   _cellPaddingX: number
   _cellPaddingY: number
   _defaultFg: RGBA
   _defaultBg: RGBA
   _defaultAttributes: number
-  _layout: { columnOffsets: number[]; rowOffsets: number[]; columnWidths: number[] }
+  _layout: { columnOffsets: number[]; rowOffsets: number[]; columnWidths: number[]; rowHeights: number[] }
   getHorizontalCellPadding(): number
+  getVerticalCellPadding(): number
+}
+
+// Two paint entry points exist across @opentui versions: 0.8 renders cells
+// with `drawCells(buffer, x, y)`, earlier cores used
+// `drawCellRange(buffer, firstRow, lastRow)` with absolute offsets. Patching
+// the wrong name is silent: the stock painter keeps drawing cell content in
+// logical order, which is exactly the "table text reads backwards" failure.
+type TablePaint = {
+  drawCells?: (this: TextTableRenderable, buffer: OptimizedBuffer, x: number, y: number) => void
+  drawCellRange?: (this: TextTableRenderable, buffer: OptimizedBuffer, firstRow: number, lastRow: number) => void
+  // Name of the paint entry point that was actually patched. Set only on a
+  // successful install so a future rename surfaces as a missing marker in the
+  // table test instead of silently painting cells in logical order.
+  __bidiTable?: "drawCells" | "drawCellRange"
 }
 
 type TableCellLayout = {
@@ -280,58 +296,89 @@ function tableLines(cell: TableCell, text: string, width: number) {
 }
 
 export function installBidiTablePaint() {
-  const proto = TextTableRenderable.prototype as unknown as {
-    drawCellRange(buffer: OptimizedBuffer, firstRow: number, lastRow: number): void
-    __bidiTable?: boolean
-  }
+  const proto = TextTableRenderable.prototype as unknown as TablePaint
   if (proto.__bidiTable) return
-  proto.__bidiTable = true
-  const stock = proto.drawCellRange
+
+  // 0.8: drawCells(buffer, x, y), offsets relative to the renderable origin.
+  const stockCells = proto.drawCells
+  if (stockCells) {
+    proto.drawCells = function (this: TextTableRenderable, buffer, x, y) {
+      const table = this as unknown as TableInternals
+      if (!paintBidiCells(table, buffer, x, y, 0, table._rowCount - 1)) stockCells.call(this, buffer, x, y)
+    }
+    proto.__bidiTable = "drawCells"
+    return
+  }
+
+  // <0.8: drawCellRange(buffer, firstRow, lastRow), offsets already absolute.
+  const stockRange = proto.drawCellRange
+  if (!stockRange) return
   proto.drawCellRange = function (this: TextTableRenderable, buffer, firstRow, lastRow) {
     const table = this as unknown as TableInternals
-    const hasRtlCell = table._cells.some((row) =>
-      row.some((cell) => !!cell && hasRtl(cell.textBuffer.getPlainText())),
-    )
-    if (!hasRtlCell) {
-      stock.call(this, buffer, firstRow, lastRow)
-      return
-    }
-    const colOffsets = table._layout.columnOffsets
-    const rowOffsets = table._layout.rowOffsets
-    const columnWidths = table._layout.columnWidths
-    const contentPadding = table.getHorizontalCellPadding()
-    const fg = table._defaultFg
-    const bg = table._defaultBg
-    const attributes = table._defaultAttributes
-    for (let rowIdx = firstRow; rowIdx <= lastRow; rowIdx++) {
-      const row = table._cells[rowIdx]
-      if (!row) continue
-      const cellY = (rowOffsets[rowIdx] ?? 0) + 1 + table._cellPaddingY
-      for (let colIdx = 0; colIdx < table._columnCount; colIdx++) {
-        const cell = row[colIdx]
-        if (!cell) continue
-        const x = (colOffsets[colIdx] ?? 0) + 1 + table._cellPaddingX
-        const text = cell.textBuffer.getPlainText()
-        if (!hasRtl(text)) {
-          buffer.drawTextBuffer(cell.textBufferView, x, cellY)
-          continue
-        }
-        const contentWidth = Math.max(1, (columnWidths[colIdx] ?? 1) - contentPadding)
-        const lines = tableLines(cell, text, contentWidth)
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i]
-          const y = cellY + i
-          if (y < 0 || y >= buffer.height) continue
-          const x0 = x + (line.rtl ? Math.max(0, contentWidth - line.width) : 0)
-          for (const part of line.cells) {
-            if (part.col >= contentWidth) continue
-            const cellX = x0 + part.col
-            if (cellX < 0 || cellX >= buffer.width) continue
-            paintBidiCell(buffer, cellX, y, part.char, fg, bg, attributes)
-          }
+    if (!paintBidiCells(table, buffer, 0, 0, firstRow, lastRow)) stockRange.call(this, buffer, firstRow, lastRow)
+  }
+  proto.__bidiTable = "drawCellRange"
+}
+
+// paintBidiCells paints every row in [firstRow, lastRow]. Returns false when no
+// cell carries strong RTL so the caller can hand the whole frame to the stock
+// painter instead of duplicating its behaviour.
+function paintBidiCells(
+  table: TableInternals,
+  buffer: OptimizedBuffer,
+  originX: number,
+  originY: number,
+  firstRow: number,
+  lastRow: number,
+) {
+  const hasRtlCell = table._cells.some((row) =>
+    row.some((cell) => !!cell && hasRtl(cell.textBuffer.getPlainText())),
+  )
+  if (!hasRtlCell) return false
+
+  const colOffsets = table._layout.columnOffsets
+  const rowOffsets = table._layout.rowOffsets
+  const columnWidths = table._layout.columnWidths
+  const rowHeights = table._layout.rowHeights
+  const contentPadding = table.getHorizontalCellPadding()
+  const verticalPadding = typeof table.getVerticalCellPadding === "function" ? table.getVerticalCellPadding() : 0
+  const fg = table._defaultFg
+  const bg = table._defaultBg
+  const attributes = table._defaultAttributes
+  const rows = Math.min(lastRow, table._rowCount - 1)
+  for (let rowIdx = Math.max(0, firstRow); rowIdx <= rows; rowIdx++) {
+    const row = table._cells[rowIdx]
+    if (!row) continue
+    const cellY = originY + (rowOffsets[rowIdx] ?? 0) + 1 + table._cellPaddingY
+    // Never paint past the row's measured height: a line our wrapper produced
+    // beyond the native wrap would otherwise bleed over the border and into the
+    // next row, which is what a "broken table" looks like on screen.
+    const contentHeight = Math.max(1, (rowHeights?.[rowIdx] ?? 1) - verticalPadding)
+    for (let colIdx = 0; colIdx < table._columnCount; colIdx++) {
+      const cell = row[colIdx]
+      if (!cell) continue
+      const x = originX + (colOffsets[colIdx] ?? 0) + 1 + table._cellPaddingX
+      const text = cell.textBuffer.getPlainText()
+      if (!hasRtl(text)) {
+        buffer.drawTextBuffer(cell.textBufferView, x, cellY)
+        continue
+      }
+      const contentWidth = Math.max(1, (columnWidths[colIdx] ?? 1) - contentPadding)
+      const lines = tableLines(cell, text, contentWidth)
+      for (let i = 0; i < lines.length && i < contentHeight; i++) {
+        const line = lines[i]
+        const y = cellY + i
+        if (y < 0 || y >= buffer.height) continue
+        const x0 = x + (line.rtl ? Math.max(0, contentWidth - line.width) : 0)
+        for (const part of line.cells) {
+          if (part.col >= contentWidth) continue
+          const cellX = x0 + part.col
+          if (cellX < 0 || cellX >= buffer.width) continue
+          paintBidiCell(buffer, cellX, y, part.char, fg, bg, attributes)
         }
       }
     }
   }
+  return true
 }
 
