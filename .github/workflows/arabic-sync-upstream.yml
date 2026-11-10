@@ -1,0 +1,107 @@
+---
+# Keeps the `arabic` branch up to date with upstream (anomalyco/opencode @ dev).
+#
+# Strategy:
+#   - No new upstream commits -> do nothing.
+#   - Clean merge               -> commit the merge, refresh bun.lock, push.
+#                                  That push triggers Arabic Build automatically.
+#   - Merge conflicts           -> abort, leave the branch untouched, open an issue
+#                                  listing the conflicting files.
+#
+# Run it by hand any time from Actions -> "Sync upstream" -> Run workflow.
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arabic
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Configure git
+        run: |
+          git config user.name "arabic-sync-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        id: fetch
+        run: |
+          git remote add upstream https://github.com/anomalyco/opencode.git 2>/dev/null || true
+          git fetch --no-tags upstream dev
+          new=$(git rev-list --count HEAD..upstream/dev)
+          echo "count=$new" >> "$GITHUB_OUTPUT"
+          echo "New upstream commits: $new"
+
+      - name: Merge upstream/dev
+        id: merge
+        if: steps.fetch.outputs.count != '0'
+        run: |
+          if git merge --no-edit upstream/dev; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt" || true
+            git merge --abort || true
+          fi
+
+      - name: Refresh lockfile
+        if: steps.merge.outputs.ok == 'true'
+        run: |
+          bun install --lockfile-only || true
+          if ! git diff --quiet -- bun.lock; then
+            git add bun.lock
+            git commit -m "chore: refresh bun.lock after upstream sync"
+          fi
+
+      - name: Push merged branch
+        if: steps.merge.outputs.ok == 'true'
+        run: git push origin HEAD:arabic
+
+      - name: Report conflicts as an issue
+        if: steps.merge.outputs.ok == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Merging \`upstream/dev\` into \`arabic\` hit conflicts, so the branch was left untouched."
+            echo ""
+            echo "Conflicting files:"
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/conflicts.txt" 2>/dev/null || echo "(none recorded)"
+            echo '```'
+            echo ""
+            echo "Resolve locally:"
+            echo ""
+            echo '```bash'
+            echo "git clone https://github.com/$GITHUB_REPOSITORY C:\\dev\\opencode-arabic"
+            echo "cd C:\\dev\\opencode-arabic"
+            echo "git remote add upstream https://github.com/anomalyco/opencode.git"
+            echo "git fetch upstream dev && git merge upstream/dev"
+            echo '```'
+          } > "$RUNNER_TEMP/body.md"
+          gh issue create \
+            --title "Upstream sync needs manual conflict resolution ($(date -u +%F))" \
+            --body-file "$RUNNER_TEMP/body.md" \
+            || true

@@ -1,0 +1,84 @@
+---
+# Builds the Arabic fork's Windows x64 binary on every push to `arabic`
+# and publishes it as a rolling release so it can be pulled with one command.
+#
+# Download (no gh login needed):
+#   https://github.com/muhamedbeshir/opencode-arabic/releases/download/arabic-latest/opencode-arabic-windows-x64.exe
+#
+# Local helper: script/arabic/update-runtime.ps1
+name: Arabic Build
+
+on:
+  push:
+    branches: [arabic]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: arabic-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    name: windows-x64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Resolve version
+        id: ver
+        run: |
+          base=$(bun -e 'console.log((await Bun.file("packages/cli/package.json").json()).version)')
+          echo "version=${base}-arabic-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Typecheck tui
+        run: bun run --cwd packages/tui typecheck
+
+      - name: Build windows-x64
+        working-directory: packages/cli
+        env:
+          OPENCODE_TARGET: windows-x64
+          OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
+          OPENCODE_CHANNEL: arabic
+          BUN_COMPILE_RELEASE: bun-v1.4.4
+        run: bun run build && rm -rf dist/.bun
+
+      - name: Verify binary exists
+        run: |
+          test -f packages/cli/dist/opencode-windows-x64/bin/opencode.exe
+          ls -lh packages/cli/dist/opencode-windows-x64/bin/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-arabic-windows-x64
+          path: packages/cli/dist/opencode-windows-x64/bin/opencode.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view arabic-latest >/dev/null 2>&1 || \
+            gh release create arabic-latest \
+              --prerelease \
+              --title "Arabic build (latest)" \
+              --notes "Automated Windows x64 build of the \`arabic\` branch."
+          gh release upload arabic-latest \
+            "packages/cli/dist/opencode-windows-x64/bin/opencode.exe#opencode-arabic-windows-x64.exe" \
+            --clobber
