@@ -67,7 +67,9 @@ if (-not $Force) {
 Write-Log "run: checking $Updater"
 $succeeded = $false
 try {
-  & $Updater 2>&1 | ForEach-Object { Write-Log "  $_" }
+  # *>&1 so the updater's Write-Host progress lines land in the log too; this
+  # script runs under Windows PowerShell as well, where they bypass the pipeline.
+  & $Updater *>&1 | ForEach-Object { Write-Log "  $_" }
   $succeeded = $true
   Write-Log "run: done"
 } catch {
