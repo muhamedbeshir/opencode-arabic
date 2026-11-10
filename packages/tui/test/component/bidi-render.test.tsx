@@ -43,14 +43,13 @@ test("the input renders RTL and the textarea matches the stock painter", async (
   await input.renderOnce()
   expect(hasRtl(input.captureCharFrame())).toBe(true)
 
-  const paint = async (node: () => unknown) => {
-    await using app = await testRender(node, { width: 24, height: 2 })
-    await app.renderOnce()
-    return app.captureCharFrame()
-  }
-  const stock = await paint(() => <textarea initialValue={logical} />)
-  const bidi = await paint(() => <bidi_textarea initialValue={logical} />)
-  expect(bidi).toBe(stock)
+  await using stock = await testRender(() => <textarea initialValue={logical} />, { width: 24, height: 2 })
+  await stock.renderOnce()
+  const stockFrame = stock.captureCharFrame()
+
+  await using bidi = await testRender(() => <bidi_textarea initialValue={logical} />, { width: 24, height: 2 })
+  await bidi.renderOnce()
+  expect(bidi.captureCharFrame()).toBe(stockFrame)
 })
 
 // Markdown prose is painted by the per-instance renderSelf override installed in
