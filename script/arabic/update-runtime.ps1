@@ -63,8 +63,17 @@ if (Test-Path -LiteralPath $RuntimePath) {
 try {
   Move-Item -LiteralPath $tmp -Destination $RuntimePath -Force
 } catch {
-  Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
-  throw "Could not replace the runtime - OpenCode is probably still running. Close it and run this again."
+  # Windows refuses to overwrite a running .exe, but it does allow renaming it,
+  # so park the live file under its backup name and drop the new one in place.
+  try {
+    $rotate = "$RuntimePath.running-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Move-Item -LiteralPath $RuntimePath -Destination $rotate -Force
+    Move-Item -LiteralPath $tmp -Destination $RuntimePath -Force
+    Write-Host "==> Swapped while OpenCode was running (takes effect on next start)."
+  } catch {
+    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    throw "Could not replace the runtime - OpenCode is probably still running. Close it and run this again."
+  }
 }
 
 Write-Host "==> Installed: $(Get-BinaryVersion $RuntimePath)"
@@ -76,6 +85,14 @@ Get-ChildItem -LiteralPath (Split-Path -Parent $RuntimePath) -Filter "opencode-a
   ForEach-Object {
     Remove-Item -LiteralPath $_.FullName -Force
     Write-Host "==> Pruned old backup: $($_.Name)"
+  }
+
+Get-ChildItem -LiteralPath (Split-Path -Parent $RuntimePath) -Filter "opencode-arabic.exe.running-*" |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -Skip 1 |
+  ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+    Write-Host "==> Pruned old running copy: $($_.Name)"
   }
 
 Write-Host "==> Done."
