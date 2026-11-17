@@ -55,6 +55,9 @@ jobs:
           OPENCODE_VERSION: ${{ steps.ver.outputs.version }}
           OPENCODE_CHANNEL: arabic
           BUN_COMPILE_RELEASE: bun-v1.4.4
+          # Authenticated fetch of the Bun release assets; the unauthenticated
+          # GitHub API rate limit on shared runners returns 403 under load.
+          GITHUB_TOKEN: ${{ github.token }}
         run: bun run build && rm -rf dist/.bun
 
       - name: Verify binary exists
