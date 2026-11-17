@@ -20,11 +20,17 @@
 #>
 [CmdletBinding()]
 param(
-  [string] $StampPath = (Join-Path $env:USERPROFILE ".config\opencode-od\update-last-run.txt"),
-  [string] $Updater = (Join-Path $PSScriptRoot "update-runtime.ps1"),
+  [string] $StampPath,
+  [string] $Updater,
   [int] $IntervalHours = 24,
   [switch] $Force
 )
+
+# Windows PowerShell 5.1 leaves $PSScriptRoot empty inside a param default, so
+# every path that depends on the script location is resolved here instead.
+$here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $StampPath) { $StampPath = Join-Path $env:USERPROFILE ".config\opencode-od\update-last-run.txt" }
+if (-not $Updater) { $Updater = Join-Path $here "update-runtime.ps1" }
 
 $log = Join-Path (Split-Path -Parent $StampPath) "update.log"
 
