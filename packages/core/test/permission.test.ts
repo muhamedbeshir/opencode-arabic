@@ -17,6 +17,7 @@ import { SessionTable } from "@opencode/core/session/sql"
 import { SessionStore } from "@opencode/core/session/store"
 import { ShellParse } from "@opencode/core/shell/parse"
 import { Tool } from "@opencode/core/tool"
+import { Wildcard } from "@opencode/core/util/wildcard"
 import { eq } from "drizzle-orm"
 import { location } from "./fixture/location"
 import { testEffect } from "./lib/effect"
@@ -179,6 +180,24 @@ describe("Permission", () => {
     ]
     expect(Permission.evaluate("external_directory", "C:/Users/x/proj/src/*", rules).effect).toBe("allow")
     expect(Permission.evaluate("external_directory", "C:/Users/x/other/*", rules).effect).toBe("ask")
+  })
+
+  test("matches file rules without case where file systems ignore it by default", () => {
+    const rules: Permission.Ruleset = [
+      { action: "*", resource: "*", effect: "allow" },
+      { action: "edit", resource: ".opencode/*", effect: "ask" },
+      { action: "read", resource: "*.env", effect: "deny" },
+      { action: "shell", resource: "git push*", effect: "ask" },
+    ]
+    const files = process.platform === "darwin" || process.platform === "win32"
+    expect(Permission.evaluate("edit", ".OPENCODE/plugins/guard.ts", rules).effect).toBe(files ? "ask" : "allow")
+    expect(Permission.evaluate("read", "Secrets.ENV", rules).effect).toBe(files ? "deny" : "allow")
+    // Commands and other resources keep their case outside Windows.
+    expect(Permission.evaluate("shell", "GIT PUSH origin dev", rules).effect).toBe(
+      process.platform === "win32" ? "ask" : "allow",
+    )
+    expect(Wildcard.match(".OPENCODE/x", ".opencode/*", true)).toBe(true)
+    expect(Wildcard.match(".OPENCODE/x", ".opencode/*")).toBe(process.platform === "win32")
   })
 
   it.effect("allows managed output reads without granting external directory access", () =>
@@ -378,6 +397,25 @@ describe("Permission", () => {
           ),
         ).toBe(true)
       expect(yield* service.list()).toEqual([])
+    }),
+  )
+
+  it.effect("rejects sibling requests in the same step and leaves another step's request pending", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const service = yield* Permission.Service
+      const ask = (call: string, messageID: string) =>
+        service.ask(
+          assertion({
+            id: Permission.ID.create(`per_${call}`),
+            source: { type: "tool", messageID, id: `call_${call}` },
+          }),
+        )
+      const first = yield* ask("first", "msg_one")
+      yield* ask("sibling", "msg_one")
+      const other = yield* ask("other", "msg_two")
+      yield* service.reply({ requestID: first.id, reply: "reject" })
+      expect((yield* service.list()).map((request) => request.id)).toEqual([other.id])
     }),
   )
 
